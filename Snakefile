@@ -1,7 +1,10 @@
+genome = 'PlasmoDB-62_Pfalciparum3D7'
+sample = '1M_1'
+marker = '13.pfcarl5'
+
 rule all:
     input:
-        "Haplotypes/1M_1/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_2.cpmp2.txt"
-
+       expand("Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",sample=sample,marker=marker)
 
 rule cutadapt:
     input: 
@@ -9,7 +12,7 @@ rule cutadapt:
         R2 = "input/raw/{sample}_R2.fastq.gz"
     output:
         R1 = "processed/cutadapt/{sample}_R1.fastq.gz",
-        R2 = "processed/{sample}_R2.fastq.gz"
+        R2 = "processed/cutadapt/{sample}_R2.fastq.gz"
     conda:
         "envs/cutadapt.yaml"
     shell:
@@ -26,24 +29,24 @@ rule fuseReads:
         "processed/fusedReads/{sample}.fastq.gz"
     shell:
         "mkdir -p logs/fusedReads;"
-        "Rscript --vanilla scripts/FuseReads.R fusedReads {input} &> logs/fusedReads/{wildcards.sample}.log"
+        "Rscript --vanilla scripts/FuseReads.R processed/fusedReads {input} &> logs/fusedReads/{wildcards.sample}.log"
 
 rule index:
     input: 
-        "{genome}.fasta"
+        "{genome_full}.fasta"
     output:
-        "{genome}.fasta.sa"
+        "{genome_full}.fasta.sa"
     conda:
         "envs/bwa.yaml"
     shell:
-        "bwa index {wildcards.genome}.fasta"
+        "bwa index {wildcards.genome_full}.fasta"
 
         
 rule align:
     input: 
         reads = "processed/fusedReads/{sample}.fastq.gz",
-        ref = "input/reference/PlasmoDB-59_Pfalciparum3D7_Genome.fasta",
-        index = "input/reference/PlasmoDB-59_Pfalciparum3D7_Genome.fasta.sa"
+        ref = expand("input/reference/{genome}_Genome.fasta",genome=genome),
+        index = expand("input/reference/{genome}_Genome.fasta.sa",genome=genome)
     output:
         al = "processed/aligned/{sample}.sam",
         al_sorted = "processed/aligned/{sample}_sorted.sam",
@@ -52,7 +55,7 @@ rule align:
     shell:
         "bwa mem {input.ref} {input.reads} > {output.al};"
         "samtools sort {output.al} > {output.al_sorted};"
-        "samtools index {output.al_sorted}"
+        "samtools index {output.al_sorted};"
 
 rule splitByMarker:
     input:
@@ -68,22 +71,61 @@ rule splitByMarker:
         "samtools view -b {input.al} $position > {output.bamfile};"
         "samtools fastq {output.bamfile} > {output.fastqfile}"
 
+rule getExons:
+    input:
+        gff = expand("input/reference/{genome}.gff",genome=genome),
+        ampPos = "input/AmpliconPositions/amplicon_positions.csv"
+    output:
+        "input/AmpliconPositions/exon_positions.csv"
+    conda: 
+        "envs/AmpSeqPython.yaml"
+    shell:
+        "python scripts/get_exons.py {input.gff} {input.ampPos} {output}"
+
 rule extractAmplicons:
     input:
-       fastq = "processed/splitByMarker/{sample}_marker_{marker}.fastq",
-       primerfile = "input/primer_files/primers_generated.csv"
+       bam = "processed/splitByMarker/{sample}_marker_{marker}.bam",
+       primerfile = "input/AmpliconPositions/amplicon_positions.csv",
+       exonfile = "input/AmpliconPositions/exon_positions.csv"
+    params:
+       fastq = "processed/extractedAmplicons/{sample}_marker_{marker}.fastq",
     output:
-       "processed/extractedAmplicons/{sample}_marker_{marker}.fastq.gz"
-    resources:
-        mem_mb = 2000
+       gz = "processed/extractedAmplicons/{sample}_marker_{marker}.fastq.gz",
+    conda:
+        "envs/AmpSeqPython.yaml"
     shell:
+       "mkdir -p processed/extractedAmplicons;"
        "mkdir -p logs/extractedAmplicons;"
-       "Rscript scripts/ExtractAmplicons.R {input.fastq} {output} {wildcards.marker} {input.primerfile} 0.2 &> logs/extractedAmplicons/{wildcards.sample}_{wildcards.marker}.log"
+       "python scripts/extract_amplicons.py {input.bam} {input.exonfile} {input.primerfile} {wildcards.marker} {params.fastq} > logs/extractedAmplicons/{wildcards.sample}_marker_{wildcards.marker}.log;"
+       "gzip {params.fastq}"
  
+rule get_primer_file:
+    input:
+        amplicon_positions = "input/AmpliconPositions/amplicon_positions.csv",
+        genome = expand("input/reference/{genome}_Genome.fasta",genome=genome)
+    output:
+        "input/primer_files/primers_generated.csv"
+    conda:
+        "envs/bwa.yaml"
+    shell:
+        "bash scripts/amplicon_positions_to_primer.sh {input} > {output} "
+        
+rule remove_exons_from_primer:
+    input:
+        amplicon_file = 'input/AmpliconPositions/amplicon_positions.csv',
+        exon_file = 'input/AmpliconPositions/exon_positions.csv',
+        primer_file = 'input/primer_files/primers_generated.csv'
+    output:
+        "input/primer_files/primers_generated_no_introns.csv"
+    shell:
+        "python scripts/remove_introns_ref.py {input.amplicon_file} {input.exon_file} {input.primer_file} > {output}"
+
+
 rule callHaplotypes:
     input: 
         fq="processed/extractedAmplicons/{sample}_marker_{marker}.fastq.gz",
-        primers="input/primer_files/primers_generated.csv"
+        primers="input/primer_files/primers_generated_no_introns.csv"
+
     output:
         "Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt"
     shell: 

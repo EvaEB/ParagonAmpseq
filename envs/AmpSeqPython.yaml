@@ -1,0 +1,6 @@
+name: AmpSeqPython
+dependencies:
+  - pandas
+  - numpy
+  - pysam
+  
