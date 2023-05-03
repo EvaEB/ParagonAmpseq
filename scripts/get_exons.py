@@ -51,7 +51,7 @@ amplicon_positions = pd.read_csv(amplicon_pos_file,sep='\t')
 # Extract genes & exons
 #----------------------
 gene = gff[gff.type == 'protein_coding_gene'] # gff entries that are genes
-exons = gff[gff.type == 'exon'] # gff entries that are exons
+exons = gff[gff.type == 'CDS'] # gff entries that are coding seqs
 already_done = [] #will store genes that are already processed to prevent double entries
 
 with open(exon_file,'w') as f:

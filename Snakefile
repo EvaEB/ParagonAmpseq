@@ -1,9 +1,10 @@
 genome = 'PlasmoDB-62_Pfalciparum3D7'
 sample = ['1M_1','CAll1','CAll2','2_1']
-marker = ['13.pfcarl5','1.cpmp1','2.cpmp2']
+marker = ['13.pfcarl5','1.cpmp1','2.cpmp2','20.pfcrt1']
 
 rule all:
     input:
+       "input/AmpliconPositions/exon_positions.csv",
        expand("Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",sample=sample,marker=marker)
 
 rule cutadapt:
