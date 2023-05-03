@@ -1,6 +1,6 @@
 genome = 'PlasmoDB-62_Pfalciparum3D7'
-sample = '1M_1'
-marker = '13.pfcarl5'
+sample = ['1M_1','CAll1','CAll2','2_1']
+marker = ['13.pfcarl5','1.cpmp1','2.cpmp2']
 
 rule all:
     input:

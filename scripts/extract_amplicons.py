@@ -19,7 +19,6 @@ outfile = sys.argv[5]
 
 # read in amplicon file and find amplicon positions for this marker
 amplicons = pd.read_csv(amplicon_positions,sep='\t')
-print(amplicons)
 this_amplicon = amplicons[amplicons.Amplicon == marker].iloc[0]
 
 # read in exon file and derive relevant introns
@@ -44,16 +43,27 @@ with open(outfile, 'w') as f:
     with pysam.AlignmentFile(bamfile, "rb") as bam:
         for read in bam:
             ref_positions = read.get_reference_positions()
-            if len(ref_positions) < len(read.seq): #there was an insertion
-                current_position=0
-                # add reference positions for the insertion (all are assumed to align to the position before the insertion)
-                for i in read.cigartuples:
-                    if i[0] == 0: #match
-                        current_position += i[1]
-                    elif i[0] == 1: #insertion:
-                        insert = [ref_positions[current_position]+1]*i[1]
-                        ref_positions = ref_positions[:current_position] + insert + ref_positions[current_position:]
-                        current_position += i[1]
+            sequence = read.seq
+            quals = read.query_qualities
+            
+            current_position=0
+            # deal with insertions, clipping etc.
+            for cigar in read.cigartuples:
+                if cigar[0] == 1: #insertion:
+                    insert = [ref_positions[current_position]+1]*cigar[1]
+                    ref_positions = ref_positions[:current_position] + insert + ref_positions[current_position:]
+                    current_position += cigar[1]
+                elif cigar[0] == 4: #soft clipping
+                    sequence = sequence[:current_position]+sequence[current_position+cigar[1]:]
+                    quals = quals[:current_position]+quals[current_position+cigar[1]:]
+
+                elif cigar[0] in [0,2,5]: #match,deletion,hard clipping
+                    pass
+                else:
+                    raise 
+                if cigar[0] != 2:
+                    current_position += cigar[1]
+            
             ref_positions = np.array(ref_positions)
             
             #find primer regions to remove
@@ -66,10 +76,10 @@ with open(outfile, 'w') as f:
             to_remove = np.logical_or.reduce(to_remove)
             
             #remove primers and introns from sequence and qualities
-            primers_introns_removed = np.array([i for i in read.seq])[~to_remove]
-            new_seq = ''.join(primers_introns_removed)
+            primers_introns_removed = np.array([i for i in sequence])[~to_remove]
 
-            new_qualities = (np.array(read.query_qualities)[~to_remove])
+            new_seq = ''.join(primers_introns_removed)
+            new_qualities = (np.array(quals)[~to_remove])
             
             # format as fastq and print
             if len(new_seq)>0:
