@@ -19,8 +19,8 @@ DNA_to_protein = {
         'GGA':'G', 'GGC':'G', 'GGG':'G', 'GGT':'G',
         'TCA':'S', 'TCC':'S', 'TCG':'S', 'TCT':'S',
         'TTC':'F', 'TTT':'F', 'TTA':'L', 'TTG':'L',
-        'TAC':'Y', 'TAT':'Y', 'TAA':'_', 'TAG':'_',
-        'TGC':'C', 'TGT':'C', 'TGA':'_', 'TGG':'W',
+        'TAC':'Y', 'TAT':'Y', 'TAA':'*', 'TAG':'*',
+        'TGC':'C', 'TGT':'C', 'TGA':'*', 'TGG':'W',
     }
 
 def determine_haplotype(seq,ref,marker,ref_translation,translation_offset):
@@ -117,9 +117,17 @@ exons = exons[exons.chromosome == chromosome]
 this_exon = exons[(exons.exonStart < amplicon_start) & (amplicon_start < exons.exonEnd)]
 if len(this_exon)>1:
     raise ValueError("more than two exons overlap with start of amplicon -- overlapping genes? this is not implemented")
+elif len(this_exon)<1: #amplicon starts in an intronic region
+    print(amplicon_start)
+    this_exon = exons[(exons.exonStart > amplicon_start)]
+    this_exon = this_exon[this_exon.exonStart == this_exon.exonStart.min()]
+    amplicon_start = this_exon.exonStart.iloc[0]
+    
 
 this_gene = exons[exons.proteinName == this_exon.proteinName.iloc[0]]
+
 exon_start = this_exon.exonStart.iloc[0]
+
 
 exons_before = this_gene[this_gene.exonStart <= exon_start]
 intronic_nt = sum(np.array(exons_before.exonStart.iloc[1:]) - np.array(exons_before.exonEnd.iloc[:-1])) - 2
@@ -144,7 +152,10 @@ try:
 except FileNotFoundError:
     master_SNPs = pd.DataFrame(columns=SNP_names)
 for seq,name in zip(seqs,names):
-    n_reads = haplotypes[haplotypes.Haplotype == name].iloc[0].Reads
+    try:
+        n_reads = haplotypes[haplotypes.Haplotype == name].iloc[0].Reads
+    except IndexError:
+        continue
     freq = n_reads/total_reads
     
     gene_details = []
@@ -162,8 +173,10 @@ for seq,name in zip(seqs,names):
             if any(SNP_ID == master_SNPs.SNP_ID):
                 gene_details.append(list(master_SNPs[SNP_ID == master_SNPs.SNP_ID].iloc[0]))
             else:
-                print(SNP_ID)
-                SNP_detail = SNP_details[s]
+                try:
+                    SNP_detail = SNP_details[s]
+                except NameError:
+                    raise NameError(f"{SNP_ID}\n{haplotype_ID}\n{master_haplotypes}\n{master_SNPs}")
                 gene_details.append(get_SNP_details(SNP_ID,SNP_detail,this_gene,amplicon_start))
                 master_SNPs = master_SNPs.append({i:j for i,j in zip(SNP_names,gene_details[-1])},ignore_index=True)
 
@@ -174,3 +187,5 @@ for seq,name in zip(seqs,names):
     for gene in gene_details: 
         print(out + '\t'.join([str(i) for i in gene]) + '\t' + str(freq))
         
+master_haplotypes.to_csv(master_haplotypes_file,sep='\t',index=False)
+master_SNPs.to_csv(master_SNPs_file,sep='\t',index=False)

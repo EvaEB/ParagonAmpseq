@@ -4,8 +4,7 @@ marker = ['13.pfcarl5','1.cpmp1','2.cpmp2','20.pfcrt1']
 
 rule all:
     input:
-       "input/AmpliconPositions/exon_positions.csv",
-       expand("Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",sample=sample,marker=marker)
+       expand("processed/SNPs/{sample}_marker_{marker}.csv",sample=sample,marker=marker)
 
 rule cutadapt:
     input: 
@@ -128,7 +127,27 @@ rule callHaplotypes:
         primers="input/primer_files/primers_generated_no_introns.csv"
 
     output:
-        "Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt"
+        haplotypeFile = "Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",
+        haplotype_seqs = "Haplotypes/{sample}/{marker}_HaplotypeSeq.fasta"
     shell: 
         "Rscript --vanilla scripts/CallHaplotypes.R {wildcards.marker} {input.fq} {input.primers} Haplotypes/{wildcards.sample};"
         "touch {output}"
+
+rule call_SNPs:
+    input:
+        haplotype_file = "Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",
+        haplotype_seqs = "Haplotypes/{sample}/{marker}_HaplotypeSeq.fasta",
+        primer_file = 'input/primer_files/primers_generated_no_introns.csv',
+        amplicon_postion_file = 'input/AmpliconPositions/amplicon_positions.csv',
+        exon_positions = 'input/AmpliconPositions/exon_positions.csv'
+    output:
+        "processed/SNPs/{sample}_marker_{marker}.csv"
+    conda:
+        "envs/AmpSeqPython.yaml"
+    shell:
+        "mkdir -p processed/master_files;"
+        "python scripts/SNP_positions.py {input.haplotype_file} {input.haplotype_seqs} "
+        "{input.primer_file} {input.amplicon_postion_file} {input.exon_positions} "
+        "{wildcards.marker} {wildcards.sample} "
+        "processed/master_files/{wildcards.marker}_haplotypes.csv "
+        "processed/master_files/{wildcards.marker}_SNPs.csv > {output}"
