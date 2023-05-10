@@ -165,7 +165,8 @@ for seq,name in zip(seqs,names):
         SNP_IDs = [marker+'_'+i for i in SNP_IDs]
     else:
         haplotype_ID, SNP_IDs,SNP_details = determine_haplotype(seq,ref,marker,ref_translation,translation_offset)
-        master_haplotypes = master_haplotypes.append({'haplotype_ID':haplotype_ID,'seq':seq},ignore_index=True)
+        new_line = pd.DataFrame({'haplotype_ID':haplotype_ID,'seq':seq})
+        master_haplotypes = pd.concat((master_haplotypes,new_line),ignore_index=True)
     out = '\t'.join([sample,marker,haplotype_ID]) + '\t'
 
     if (len(SNP_IDs) > 0) and (SNP_IDs[0] != marker+'_WT'):

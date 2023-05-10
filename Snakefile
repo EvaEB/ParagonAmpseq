@@ -27,6 +27,8 @@ rule fuseReads:
         R2 = "processed/cutadapt/{sample}_R2.fastq.gz"
     output:
         "processed/fusedReads/{sample}.fastq.gz"
+    envmodules: 
+        "R"
     shell:
         "mkdir -p logs/fusedReads;"
         "Rscript --vanilla scripts/FuseReads.R processed/fusedReads {input} &> logs/fusedReads/{wildcards.sample}.log"
@@ -35,7 +37,7 @@ rule index:
     input: 
         "{genome_full}.fasta"
     output:
-        "{genome_full}.fasta.sa"
+        "{genome_full}.fasta.fai"
     conda:
         "envs/bwa.yaml"
     shell:
@@ -46,7 +48,7 @@ rule align:
     input: 
         reads = "processed/fusedReads/{sample}.fastq.gz",
         ref = expand("input/reference/{genome}_Genome.fasta",genome=genome),
-        index = expand("input/reference/{genome}_Genome.fasta.sa",genome=genome)
+        index = expand("input/reference/{genome}_Genome.fasta.fai",genome=genome)
     output:
         al = "processed/aligned/{sample}.sam",
         al_sorted = "processed/aligned/{sample}_sorted.sam",
@@ -117,6 +119,8 @@ rule remove_exons_from_primer:
         primer_file = 'input/primer_files/primers_generated.csv'
     output:
         "input/primer_files/primers_generated_no_introns.csv"
+    conda:
+        "envs/AmpSeqPython.yaml"
     shell:
         "python scripts/remove_introns_ref.py {input.amplicon_file} {input.exon_file} {input.primer_file} > {output}"
 
@@ -125,10 +129,11 @@ rule callHaplotypes:
     input: 
         fq="processed/extractedAmplicons/{sample}_marker_{marker}.fastq.gz",
         primers="input/primer_files/primers_generated_no_introns.csv"
-
     output:
         haplotypeFile = "Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",
         haplotype_seqs = "Haplotypes/{sample}/{marker}_HaplotypeSeq.fasta"
+    envmodules: 
+        "R"
     shell: 
         "Rscript --vanilla scripts/CallHaplotypes.R {wildcards.marker} {input.fq} {input.primers} Haplotypes/{wildcards.sample};"
         "touch {output}"
