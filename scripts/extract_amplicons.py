@@ -52,7 +52,6 @@ with open(outfile, 'w') as f:
                 if cigar[0] == 1: #insertion:
                     insert = [ref_positions[current_position]+1]*cigar[1]
                     ref_positions = ref_positions[:current_position] + insert + ref_positions[current_position:]
-                    current_position += cigar[1]
                 elif cigar[0] == 4: #soft clipping
                     sequence = sequence[:current_position]+sequence[current_position+cigar[1]:]
                     quals = quals[:current_position]+quals[current_position+cigar[1]:]
@@ -77,6 +76,7 @@ with open(outfile, 'w') as f:
             
             #remove primers and introns from sequence and qualities
             primers_introns_removed = np.array([i for i in sequence])[~to_remove]
+
 
             new_seq = ''.join(primers_introns_removed)
             new_qualities = (np.array(quals)[~to_remove])

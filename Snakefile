@@ -1,6 +1,13 @@
 genome = 'PlasmoDB-62_Pfalciparum3D7'
-sample = ['1M_1','CAll1','CAll2','2_1']
-marker = ['13.pfcarl5','1.cpmp1','2.cpmp2','20.pfcrt1']
+with open('samples') as f:
+  sample = f.readlines()
+  sample = [i.strip() for i in sample]
+  
+with open('markers') as f:
+  marker = f.readlines()
+  marker = [i.strip() for i in marker]	
+  
+localrules: all, index, splitByMarker, getExons, get_primer_file
 
 rule all:
     input:
@@ -29,6 +36,8 @@ rule fuseReads:
         "processed/fusedReads/{sample}.fastq.gz"
     envmodules: 
         "R"
+    resources:
+        mem_mb=10000
     shell:
         "mkdir -p logs/fusedReads;"
         "Rscript --vanilla scripts/FuseReads.R processed/fusedReads {input} &> logs/fusedReads/{wildcards.sample}.log"

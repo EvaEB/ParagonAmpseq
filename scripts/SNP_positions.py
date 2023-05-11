@@ -118,7 +118,6 @@ this_exon = exons[(exons.exonStart < amplicon_start) & (amplicon_start < exons.e
 if len(this_exon)>1:
     raise ValueError("more than two exons overlap with start of amplicon -- overlapping genes? this is not implemented")
 elif len(this_exon)<1: #amplicon starts in an intronic region
-    print(amplicon_start)
     this_exon = exons[(exons.exonStart > amplicon_start)]
     this_exon = this_exon[this_exon.exonStart == this_exon.exonStart.min()]
     amplicon_start = this_exon.exonStart.iloc[0]
@@ -165,7 +164,7 @@ for seq,name in zip(seqs,names):
         SNP_IDs = [marker+'_'+i for i in SNP_IDs]
     else:
         haplotype_ID, SNP_IDs,SNP_details = determine_haplotype(seq,ref,marker,ref_translation,translation_offset)
-        new_line = pd.DataFrame({'haplotype_ID':haplotype_ID,'seq':seq})
+        new_line = pd.DataFrame({'haplotype_ID':[haplotype_ID],'seq':[seq]})
         master_haplotypes = pd.concat((master_haplotypes,new_line),ignore_index=True)
     out = '\t'.join([sample,marker,haplotype_ID]) + '\t'
 
@@ -179,7 +178,8 @@ for seq,name in zip(seqs,names):
                 except NameError:
                     raise NameError(f"{SNP_ID}\n{haplotype_ID}\n{master_haplotypes}\n{master_SNPs}")
                 gene_details.append(get_SNP_details(SNP_ID,SNP_detail,this_gene,amplicon_start))
-                master_SNPs = master_SNPs.append({i:j for i,j in zip(SNP_names,gene_details[-1])},ignore_index=True)
+                new_line = pd.DataFrame({i:[j] for i,j in zip(SNP_names,gene_details[-1])})
+                master_SNPs = pd.concat((master_SNPs,new_line),ignore_index=True)
 
     else:
         gene_details.append(['NA']*11)
