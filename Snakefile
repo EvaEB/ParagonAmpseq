@@ -33,15 +33,20 @@ rule fuseReads:
     input:
         R1 = "processed/cutadapt/{sample}_R1.fastq.gz",
         R2 = "processed/cutadapt/{sample}_R2.fastq.gz"
-    output:
+    output: 
         "processed/fusedReads/{sample}.fastq.gz"
-    envmodules: 
-        "R"
+    conda:
+        "envs/vsearch.yaml"
     resources:
         mem_mb=10000
     shell:
         "mkdir -p logs/fusedReads;"
-        "Rscript --vanilla scripts/FuseReads.R processed/fusedReads {input} &> logs/fusedReads/{wildcards.sample}.log"
+        "vsearch --fastq_mergepairs {input.R1} --reverse {input.R2} --fastqout temp_merged_{wildcards.sample}.fastq "
+        "--fastqout_notmerged_fwd temp_not_merged_fw_{wildcards.sample}.fastq --fastqout_notmerged_rev temp_not_merged_rv_{wildcards.sample}.fastq "
+        "--fastq_truncqual 1 --fastq_maxns 0 --fastq_allowmergestagger  &> logs/fusedReads/{wildcards.sample}.log;"
+        "cat temp_*_{wildcards.sample}.fastq > processed/fusedReads/{wildcards.sample}.fastq;"
+        "rm temp_*_{wildcards.sample}.fastq;"
+        "gzip processed/fusedReads/{wildcards.sample}.fastq"
 
 rule index:
     input: 
