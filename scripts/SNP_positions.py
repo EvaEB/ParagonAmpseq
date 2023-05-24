@@ -23,55 +23,53 @@ DNA_to_protein = {
         'TGC':'C', 'TGT':'C', 'TGA':'*', 'TGG':'W',
     }
 
-def determine_haplotype(seq,ref,marker,ref_translation,translation_offset):
+def determine_haplotype(seq,ref,marker):
     diffs = [(i,ref[i],seq[i]) for i in range(len(seq)) if seq[i]!=ref[i]]
-    mut_IDs,mut_details = get_SNP_IDs(diffs,seq,ref_translation,translation_offset)
-    if len(mut_IDs)>0:
-        haplotypeID = marker + '_' + '-'.join(mut_IDs)
+    exons_in_this_chromosome = exons[(exons.chromosome == chromosome)]
+
+    mutIDs = []
+    mut_details = []
+    for dif in diffs:
+        SNPpos_amplicon_0_NT = dif[0]
+        SNPpos_genome_0_NT = AmpliconStart_genome_0_NT + SNPpos_amplicon_0_NT
+        before_and_including = exons_in_this_chromosome[exons_in_this_chromosome.exonStart<=SNPpos_genome_0_NT]
+        exonWithSNPStart_genome_0_NT = before_and_including.exonStart.max() - 1
+        if len(before_and_including) == 1:
+            SNPpos_gene_0_NT = SNPpos_genome_0_NT - exonWithSNPStart_genome_0_NT
+        else:
+            before = before_and_including[before_and_including.exonStart < exonWithSNPStart_genome_0_NT]
+            SNPpos_gene_0_NT = ((before.exonEnd - (before.exonStart - 1)).sum()+(SNPpos_genome_0_NT-exonWithSNPStart_genome_0_NT))
+        
+        SNPpos_gene_0_AA = SNPpos_gene_0_NT//3
+        gene_base_position = SNPpos_gene_0_NT%3
+        offset = int((SNPpos_amplicon_0_NT-gene_base_position)%3)
+        SNPpos_amplicon_0_AA = (SNPpos_amplicon_0_NT-offset)//3
+
+        codons = [seq[i+offset:i+offset+3] for i in range(0,len(seq),3)]
+        codons_ref = [ref[i+offset:i+offset+3] for i in range(0,len(seq),3)]
+        while len(codons[-1]) != 3:
+            codons = codons[:-1]
+            codons_ref = codons_ref[:-1]
+        translation = [DNA_to_protein[i] for i in codons]
+        translation_ref = [DNA_to_protein[i] for i in codons_ref]
+        
+        AA_old = translation_ref[SNPpos_amplicon_0_AA]
+        AA_new = translation[SNPpos_amplicon_0_AA]
+        NT_old = dif[1]
+        NT_new = dif[2]
+        mutIDs.append(f'{SNPpos_amplicon_0_NT+1}{NT_old}{NT_new}/{SNPpos_amplicon_0_AA+1}{AA_old}{AA_new}')
+        mut_details.append([SNPpos_genome_0_NT, 
+                            SNPpos_gene_0_NT, SNPpos_amplicon_0_NT, NT_old, NT_new,
+                            SNPpos_gene_0_AA, SNPpos_amplicon_0_AA, AA_old, AA_new])
+
+    if len(mutIDs)>0:
+        haplotypeID = marker + '_' + '-'.join(mutIDs)
     else:
         haplotypeID = marker + '_WT'
-    mut_IDs = [marker+'_'+i for i in mut_IDs]
-    return haplotypeID, mut_IDs,mut_details
+    return haplotypeID, mutIDs, mut_details
 
 
-def get_SNP_IDs(muts,seq,ref_translation,translation_offset):
-    codons = [seq[i+translation_offset:i+3+translation_offset] for i in range(0,len(seq),3)]
-    if len(codons[-1]) != 3:
-        codons = codons[:-1]
-    seq_translation = [DNA_to_protein[i] for i in codons]
-    
-    mut_IDs = []
-    mut_details = []
-    for mut in muts:
-        amplicon_position_nt = mut[0]
-        nt_old = mut[1]
-        nt_new = mut[2]
-        
-        amplicon_position_AA = (mut[0]-translation_offset)//3
-        AA_old = ref_translation[amplicon_position_AA]
-        AA_new = seq_translation[amplicon_position_AA]
-        
-        mut_IDs.append(f'{amplicon_position_nt}{nt_old}{nt_new}/{amplicon_position_AA}{AA_old}{AA_new}')
-        mut_details.append((amplicon_position_nt,nt_old,nt_new,amplicon_position_AA, AA_old, AA_new))
-    return mut_IDs, mut_details
-
-def get_SNP_details(mut_ID, mut_detail,this_gene,amplicon_start):
-    amplicon_position_nt,nt_old,nt_new,amplicon_position_AA, AA_old, AA_new = mut_detail
-    genome_start_nt = amplicon_start+amplicon_position_nt
-    
-    gene_position_nt = 0
-    for _,i in this_gene.iterrows():
-        if i.exonEnd > genome_start_nt:
-            gene_position_nt += genome_start_nt-i.exonStart 
-            break
-        else:
-            gene_position_nt += i.exonEnd - i.exonStart + 1
-    gene_position_AA = (gene_position_nt//3) + 1
-    
-    chromosome = this_gene.chromosome.iloc[0]
-    
-    return mut_ID,chromosome,genome_start_nt,gene_position_nt,amplicon_position_nt,nt_old,nt_new, gene_position_AA,amplicon_position_AA,AA_old,AA_new
-
+# command line args
 Haplotypes = sys.argv[1]
 haplotype_seqs = sys.argv[2]
 primer_file = sys.argv[3] 
@@ -82,7 +80,7 @@ sample = sys.argv[7]
 master_haplotypes_file = sys.argv[8] 
 master_SNPs_file = sys.argv[9]
 
-
+# read in relevant files
 haplotypes = pd.read_csv(Haplotypes,sep='\t')
 total_reads = haplotypes.Reads.sum()
 
@@ -96,7 +94,18 @@ with open(haplotype_seqs) as f:
             seqs.append('')
         else:
             seqs[-1] += line.strip()
-            
+      
+#try:
+#    master_haplotypes = pd.read_csv(master_haplotypes_file,sep='\t')
+#except FileNotFoundError:
+#    master_haplotypes = pd.DataFrame(columns=['haplotype_ID','seq'])
+
+SNP_names = ['SNP_ID','chromosome','genome_pos','gene_pos_nt','amplicon_position_nt','nt_old','nt_new','gene_position_AA','amplicon_position_AA','AA_old','AA_new']
+#try:
+#    master_SNPs = pd.read_csv(master_SNPs_file,sep='\t')
+#except FileNotFoundError:
+#    master_SNPs = pd.DataFrame(columns=SNP_names)
+
 
 with open(primer_file) as f:
     for line in f.readlines():
@@ -108,48 +117,12 @@ with open(amplicon_postion_file) as f:
     for line in f.readlines():
         fields = line.strip().split('\t')
         if fields[0] == marker:
-            amplicon_start = int(fields[3])
-            amplicon_end = int(fields[5])
+            AmpliconStart_genome_0_NT = int(fields[3])
+            AmpliconEnd_genome_0_NT = int(fields[5])   
             chromosome = fields[1]
-            
+            break
 exons = pd.read_csv(exon_positions,sep='\t')
-exons = exons[exons.chromosome == chromosome]
-this_exon = exons[(exons.exonStart < amplicon_start) & (amplicon_start < exons.exonEnd)]
-if len(this_exon)>1:
-    raise ValueError("more than two exons overlap with start of amplicon -- overlapping genes? this is not implemented")
-elif len(this_exon)<1: #amplicon starts in an intronic region
-    this_exon = exons[(exons.exonStart > amplicon_start)]
-    this_exon = this_exon[this_exon.exonStart == this_exon.exonStart.min()]
-    amplicon_start = this_exon.exonStart.iloc[0]
-    
 
-this_gene = exons[exons.proteinName == this_exon.proteinName.iloc[0]]
-
-exon_start = this_exon.exonStart.iloc[0]
-
-
-exons_before = this_gene[this_gene.exonStart <= exon_start]
-intronic_nt = sum(np.array(exons_before.exonStart.iloc[1:]) - np.array(exons_before.exonEnd.iloc[:-1])) - 2
-gene_start = exons_before.exonStart.min()
-translation_offset = (amplicon_start - exon_start)%3 + 1
-
-codons_ref = [ref[i+translation_offset:i+3+translation_offset] for i in range(0,len(ref),3)]
-if len(codons_ref[-1]) != 3:
-    codons_ref = codons_ref[:-1]
-ref_translation = [DNA_to_protein[i] for i in codons_ref]
-
-
-try:
-    master_haplotypes = pd.read_csv(master_haplotypes_file,sep='\t')
-except FileNotFoundError:
-    master_haplotypes = pd.DataFrame(columns=['haplotype_ID','seq'])
-    
-SNP_names = ['SNP_ID','chromosome','genome_pos','gene_pos_nt','amplicon_position_nt','nt_old','nt_new','gene_position_AA','amplicon_position_AA','AA_old','AA_new']
-
-try:
-    master_SNPs = pd.read_csv(master_SNPs_file,sep='\t')
-except FileNotFoundError:
-    master_SNPs = pd.DataFrame(columns=SNP_names)
 for seq,name in zip(seqs,names):
     try:
         n_reads = haplotypes[haplotypes.Haplotype == name].iloc[0].Reads
@@ -158,35 +131,41 @@ for seq,name in zip(seqs,names):
     freq = n_reads/total_reads
     
     gene_details = []
-    if any(seq == master_haplotypes.seq):
-        haplotype_ID = (master_haplotypes[seq == master_haplotypes.seq].iloc[0].haplotype_ID)
-        SNP_IDs = haplotype_ID.split('_')[1].split('-')
-        SNP_IDs = [marker+'_'+i for i in SNP_IDs]
-    else:
-        haplotype_ID, SNP_IDs,SNP_details = determine_haplotype(seq,ref,marker,ref_translation,translation_offset)
-        new_line = pd.DataFrame({'haplotype_ID':[haplotype_ID],'seq':[seq]})
-        master_haplotypes = pd.concat((master_haplotypes,new_line),ignore_index=True)
+    #if any(seq == master_haplotypes.seq):
+    #    haplotype_ID = (master_haplotypes[seq == master_haplotypes.seq].iloc[0].haplotype_ID)
+    #    SNP_IDs = haplotype_ID.split('_')[1].split('-')
+    #    SNP_IDs = [marker+'_'+i for i in SNP_IDs]
+    #else:
+    haplotype_ID, SNP_IDs,SNP_details = determine_haplotype(seq,ref,marker)
+    #new_line = pd.DataFrame({'haplotype_ID':[haplotype_ID],'seq':[seq]})
+    #master_haplotypes = pd.concat((master_haplotypes,new_line),ignore_index=True)
     out = '\t'.join([sample,marker,haplotype_ID]) + '\t'
 
     if (len(SNP_IDs) > 0) and (SNP_IDs[0] != marker+'_WT'):
         for s,SNP_ID in enumerate(SNP_IDs):
-            if any(SNP_ID == master_SNPs.SNP_ID):
-                gene_details.append(list(master_SNPs[SNP_ID == master_SNPs.SNP_ID].iloc[0]))
-            else:
-                try:
-                    SNP_detail = SNP_details[s]
-                except NameError:
-                    raise NameError(f"{SNP_ID}\n{haplotype_ID}\n{master_haplotypes}\n{master_SNPs}")
-                gene_details.append(get_SNP_details(SNP_ID,SNP_detail,this_gene,amplicon_start))
-                new_line = pd.DataFrame({i:[j] for i,j in zip(SNP_names,gene_details[-1])})
-                master_SNPs = pd.concat((master_SNPs,new_line),ignore_index=True)
+            #if any(SNP_ID == master_SNPs.SNP_ID):
+            #    gene_details.append(list(master_SNPs[SNP_ID == master_SNPs.SNP_ID].iloc[0]))
+            #else:
+            #    try:
+            #        SNP_detail = SNP_details[s]
+            #    except NameError:
+            #        raise NameError(f"{SNP_ID}\n{haplotype_ID}")
+            SNP_detail = SNP_details[s]
+            SNP_names = ['SNP_ID','chromosome','genome_pos','gene_pos_nt','amplicon_position_nt','nt_old','nt_new','gene_position_AA','amplicon_position_AA','AA_old','AA_new']
+            gene_details.append([f'{marker}_{SNP_ID}',chromosome] + SNP_detail)
+            #new_line = pd.DataFrame({i:[j] for i,j in zip(SNP_names,gene_details[-1])})
+            #master_SNPs = pd.concat((master_SNPs,new_line),ignore_index=True)
 
     else:
         gene_details.append(['NA']*11)
         gene_details[-1][1] = chromosome
         
     for gene in gene_details: 
+        for i in [2,3,4,7,8]:
+            if gene[i] != 'NA':
+                gene[i] += 1 #switch to one-based indexing for output
+
         print(out + '\t'.join([str(i) for i in gene]) + '\t' + str(freq))
         
-master_haplotypes.to_csv(master_haplotypes_file,sep='\t',index=False)
-master_SNPs.to_csv(master_SNPs_file,sep='\t',index=False)
+#master_haplotypes.to_csv(master_haplotypes_file,sep='\t',index=False)
+#master_SNPs.to_csv(master_SNPs_file,sep='\t',index=False)

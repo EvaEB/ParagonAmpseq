@@ -55,7 +55,7 @@ exons = gff[gff.type == 'CDS'] # gff entries that are coding seqs
 already_done = [] #will store genes that are already processed to prevent double entries
 
 with open(exon_file,'w') as f:
-    f.write('\t'.join(['ID','proteinName','chromosome','exonStart','exonEnd'])+'\n') #write the header to the csv
+    f.write('\t'.join(['ID','proteinName','chromosome','exonStart','exonEnd','phase'])+'\n') #write the header to the csv
     for _,row in amplicon_positions.iterrows():
         # find genes that overlap with amplicon
         right_chrom = gene[gene.seqid == row.chrom] 
@@ -75,6 +75,6 @@ with open(exon_file,'w') as f:
                 attributes['Name'] = row.Amplicon
             exons_this_gene = exons[exons['attributes'].str.contains('Parent='+attributes['ID'])]
             for _,exon in exons_this_gene.iterrows():
-                f.write('\t'.join([attributes['ID'], attributes['Name'], row.chrom, str(exon.start),str(exon.end)])+'\n')
+                f.write('\t'.join([attributes['ID'], attributes['Name'], row.chrom, str(exon.start),str(exon.end),str(exon.phase)])+'\n')
             already_done.append(attributes['ID'])
     

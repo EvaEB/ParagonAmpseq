@@ -55,12 +55,11 @@ with open(outfile, 'w') as f:
                 elif cigar[0] == 4: #soft clipping
                     sequence = sequence[:current_position]+sequence[current_position+cigar[1]:]
                     quals = quals[:current_position]+quals[current_position+cigar[1]:]
-
                 elif cigar[0] in [0,2,5]: #match,deletion,hard clipping
                     pass
                 else:
                     raise 
-                if cigar[0] != 2:
+                if cigar[0] not in  [2,4]:
                     current_position += cigar[1]
             
             ref_positions = np.array(ref_positions)
@@ -75,7 +74,12 @@ with open(outfile, 'w') as f:
             to_remove = np.logical_or.reduce(to_remove)
             
             #remove primers and introns from sequence and qualities
-            primers_introns_removed = np.array([i for i in sequence])[~to_remove]
+            try:
+                primers_introns_removed = np.array([i for i in sequence])[~to_remove]
+            except:
+                print(len(read.seq))
+                print(read.cigartuples)
+                raise
 
 
             new_seq = ''.join(primers_introns_removed)

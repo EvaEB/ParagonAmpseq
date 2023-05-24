@@ -1,12 +1,13 @@
 genome = 'PlasmoDB-62_Pfalciparum3D7'
 with open('samples') as f:
-  sample = f.readlines()
-  sample = [i.strip() for i in sample]
-  
+ sample = f.readlines()
+ sample = [i.strip() for i in sample]
+ 
 with open('markers') as f:
-  marker = f.readlines()
-  marker = [i.strip() for i in marker]	
-  
+ marker = f.readlines()
+ marker = [i.strip() for i in marker]	
+
+ 
 localrules: all, index, splitByMarker, getExons, get_primer_file
 
 rule all:
