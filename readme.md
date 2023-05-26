@@ -32,11 +32,12 @@ the raw sequencing sequencing files should be placed in the folder `input/raw`. 
 The sequencing files are assumed to already by demultiplexed by sample, and files should be named `{sample}_R1.fastq.gz` for the forward reads and `{sample}_R2.fastq.gz` for the reverse reads, where {sample} is replaced with the sample name of your choice.
 
 Minimal example:
-
+```
 📁 raw
 ├── 🧬 sample1_R1.fastq.gz
 ├── 🧬 sample1_R2.fastq.gz
-   
+```
+
 More complex example:
 ```
 📁 raw
