@@ -14,5 +14,3 @@ echo "MarkerID;Forward;Reverse;ReferenceSequence"
 
     done 
 } < $1
-
-Amplicon;>chrom:left_start-left_end;>chrom:right_start-right_end;>chrom:1--1
