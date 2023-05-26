@@ -38,7 +38,7 @@ Minimal example:
 ├── 🧬 sample1_R2.fastq.gz
    
 More complex example:
-
+```
 📁 raw
 ├──📁 experiment1
 │   ├── 🧬 sample1_R1.fastq.gz
@@ -54,8 +54,7 @@ More complex example:
 │   ├── 📁 experiment2.2
 │   │   ├── 🧬 sample1_R1.fastq.gz
 │   │   ├── 🧬 sample1_R2.fastq.gz
-   
-
+```
 #### Amplicon positions
 In the folder `input/AmpliconPositions` there has to be a file `amplicon_positions.csv` that contains the marker names and the forward/reverse primer positions. This file is the same as that provided by Paragon. If needed, the provided template can be used to create this file manually.
 
@@ -75,6 +74,7 @@ If any samples are missing, the pipeline will not run. Missing markers will resu
 before running the pipeline, the directory structure should now look like this
 (running the pipeline will create several new folders in addition to the ones listed here)
 
+```
 .
 ├── 📁 envs
 │   ├── ...
@@ -93,6 +93,7 @@ before running the pipeline, the directory structure should now look like this
 ├── 📁 scripts
 │   ├── ...
 ├── 🖹 Snakefile
+```
 
 ### Running the pipeline
 #### Local execution
