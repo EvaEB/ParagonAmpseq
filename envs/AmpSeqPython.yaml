@@ -1,6 +1,8 @@
 name: AmpSeqPython
+channels:
+  - r
+  - bioconda
 dependencies:
   - pandas
   - numpy
   - pysam
-  
