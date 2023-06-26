@@ -1,54 +1,67 @@
-genome = 'PlasmoDB-62_Pfalciparum3D7'
-with open('samples') as f:
- sample = f.readlines()
- sample = [i.strip() for i in sample]
- 
-with open('markers') as f:
- marker = f.readlines()
- marker = [i.strip() for i in marker]	
+try:
+  experiment = config['experiment']
+except KeyError:
+  experiment = 'DATA'
 
+
+try:
+  genome = config['genome'] 
+except KeyError:
+  genome = 'PlasmoDB-62_Pfalciparum3D7'
+
+
+with open(experiment+'/samples') as f:
+ sample = f.readlines()
+ sample = [i.strip() for i in sample if i[0] != '#']
+ 
+with open(experiment+'/markers') as f:
+ marker = f.readlines()
+ marker = [i.strip() for i in marker if i[0] != '#']
+
+
+ 
  
 localrules: all, index, splitByMarker, getExons, get_primer_file
 
 rule all:
     input:
-       expand("processed/SNPs/{sample}_marker_{marker}.csv",sample=sample,marker=marker)
+       expand("{experiment}/processed/SNPs/{sample}_marker_{marker}.csv",sample=sample,marker=marker,experiment=experiment)
 
 rule cutadapt:
     input: 
-        R1 = "input/raw/{sample}_R1.fastq.gz",
-        R2 = "input/raw/{sample}_R2.fastq.gz"
+        R1 = "{experiment}/input/raw/{sample}_R1.fastq.gz",
+        R2 = "{experiment}/input/raw/{sample}_R2.fastq.gz"
     output:
-        R1 = "processed/cutadapt/{sample}_R1.fastq.gz",
-        R2 = "processed/cutadapt/{sample}_R2.fastq.gz"
+        R1 = "{experiment}/processed/cutadapt/{sample}_R1.fastq.gz",
+        R2 = "{experiment}/processed/cutadapt/{sample}_R2.fastq.gz"
     conda:
         "envs/cutadapt.yaml"
     shell:
-        "mkdir -p $(dirname logs/cutadapt/{wildcards.sample}_R1.log);"
-        "cutadapt -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -o {output.R1} {input.R1} > logs/cutadapt/{wildcards.sample}_R1.log;"
-        "cutadapt -a AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT -o {output.R2} {input.R2} > logs/cutadapt/{wildcards.sample}_R2.log"
+        "mkdir -p $(dirname {wildcards.experiment}/logs/cutadapt/{wildcards.sample}_R1.log);"
+        "cutadapt -a AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC -o {output.R1} {input.R1} > {wildcards.experiment}/logs/cutadapt/{wildcards.sample}_R1.log;"
+        "cutadapt -a AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGT -o {output.R2} {input.R2} > {wildcards.experiment}/logs/cutadapt/{wildcards.sample}_R2.log"
 
 
 rule fuseReads:
     input:
-        R1 = "processed/cutadapt/{sample}_R1.fastq.gz",
-        R2 = "processed/cutadapt/{sample}_R2.fastq.gz"
+        R1 = "{experiment}/processed/cutadapt/{sample}_R1.fastq.gz",
+        R2 = "{experiment}/processed/cutadapt/{sample}_R2.fastq.gz"
     output: 
-        "processed/fusedReads/{sample}.fastq.gz"
+        "{experiment}/processed/fusedReads/{sample}.fastq.gz"
     conda:
         "envs/vsearch.yaml"
     resources:
         mem_mb=10000
     shell:
-        "mkdir -p $(dirname logs/fusedReads/{wildcards.sample}.log);"
-        "mkdir -p $(dirname processed/fusedReads/{wildcards.sample}.fastq);"
-        "vsearch --fastq_mergepairs {input.R1} --reverse {input.R2} --fastqout processed/fusedReads/{wildcards.sample}_temp_merged.fastq "
-        "--fastqout_notmerged_fwd processed/fusedReads/{wildcards.sample}_temp_not_merged_fw.fastq "
-        "--fastqout_notmerged_rev processed/fusedReads/{wildcards.sample}temp_not_merged_rv.fastq "
-        "--fastq_truncqual 1 --fastq_maxns 0 --fastq_allowmergestagger  &> logs/fusedReads/{wildcards.sample}.log;"
-        "cat processed/fusedReads/{wildcards.sample}_temp_*.fastq > processed/fusedReads/{wildcards.sample}.fastq;"
-        "rm processed/fusedReads/{wildcards.sample}_temp_*.fastq;"
-        "gzip processed/fusedReads/{wildcards.sample}.fastq"
+        "mkdir -p $(dirname {wildcards.experiment}/logs/fusedReads/{wildcards.sample}.log);"
+        "mkdir -p $(dirname {wildcards.experiment}/processed/fusedReads/{wildcards.sample}.fastq);"
+        "vsearch --fastq_mergepairs {input.R1} --reverse {input.R2} --fastqout {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_merged.fastq "
+        "--fastqout_notmerged_fwd  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_not_merged_fw.fastq "
+        "--fastqout_notmerged_rev  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_not_merged_rv.fastq "
+        "--fastq_truncqual 1 --fastq_maxns 0 --fastq_allowmergestagger  &>  {wildcards.experiment}/logs/fusedReads/{wildcards.sample}.log;"
+        "cat  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_*.fastq >  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}.fastq;"
+        "rm  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_*.fastq;"
+        "gzip  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}.fastq"
 
 rule index:
     input: 
@@ -63,12 +76,12 @@ rule index:
         
 rule align:
     input: 
-        reads = "processed/fusedReads/{sample}.fastq.gz",
-        ref = expand("input/reference/{genome}_Genome.fasta",genome=genome),
-        index = expand("input/reference/{genome}_Genome.fasta.sa",genome=genome)
+        reads = "{experiment}/processed/fusedReads/{sample}.fastq.gz",
+        ref = expand("reference/{genome}_Genome.fasta",genome=genome),
+        index = expand("reference/{genome}_Genome.fasta.sa",genome=genome)
     output:
-        al = "processed/aligned/{sample}.sam",
-        al_sorted = "processed/aligned/{sample}_sorted.sam",
+        al = "{experiment}/processed/aligned/{sample}.sam",
+        al_sorted = "{experiment}/processed/aligned/{sample}_sorted.sam",
     conda:
         "envs/bwa.yaml"
     shell:
@@ -78,9 +91,9 @@ rule align:
 
 rule getAmpliconPosition_list:
     input:
-         "input/AmpliconPositions/amplicon_positions.csv"
+         "{experiment}/input/AmpliconPositions/amplicon_positions.csv"
     output:
-         "input/AmpliconPositions/amplicon_position_list.csv"
+         "{experiment}/input/AmpliconPositions/amplicon_position_list.csv"
     shell:
         """
         cat {input} | awk '{{print $1\"\\t\"$2\":\"$4\"-\"$5}}' > {output}
@@ -88,11 +101,11 @@ rule getAmpliconPosition_list:
 
 rule splitByMarker:
     input:
-        al = "processed/aligned/{sample}_sorted.sam",
-        ampliconPos = "input/AmpliconPositions/amplicon_position_list.csv"
+        al = "{experiment}/processed/aligned/{sample}_sorted.sam",
+        ampliconPos = "{experiment}/input/AmpliconPositions/amplicon_position_list.csv"
     output:
-        bamfile = "processed/splitByMarker/{sample}_marker_{marker}.bam",
-        fastqfile = "processed/splitByMarker/{sample}_marker_{marker}.fastq"
+        bamfile = "{experiment}/processed/splitByMarker/{sample}_marker_{marker}.bam",
+        fastqfile = "{experiment}/processed/splitByMarker/{sample}_marker_{marker}.fastq"
     conda:
         "envs/bwa.yaml"
     shell:
@@ -102,10 +115,10 @@ rule splitByMarker:
 
 rule getExons:
     input:
-        gff = expand("input/reference/{genome}.gff",genome=genome),
-        ampPos = "input/AmpliconPositions/amplicon_positions.csv"
+        gff = expand("reference/{genome}.gff",genome=genome),
+        ampPos = "{experiment}/input/AmpliconPositions/amplicon_positions.csv"
     output:
-        "input/AmpliconPositions/exon_positions.csv"
+        "{experiment}/input/AmpliconPositions/exon_positions.csv"
     conda: 
         "envs/AmpSeqPython.yaml"
     shell:
@@ -113,27 +126,27 @@ rule getExons:
 
 rule extractAmplicons:
     input:
-       bam = "processed/splitByMarker/{sample}_marker_{marker}.bam",
-       primerfile = "input/AmpliconPositions/amplicon_positions.csv",
-       exonfile = "input/AmpliconPositions/exon_positions.csv"
+       bam = "{experiment}/processed/splitByMarker/{sample}_marker_{marker}.bam",
+       primerfile = "{experiment}/input/AmpliconPositions/amplicon_positions.csv",
+       exonfile = "{experiment}/input/AmpliconPositions/exon_positions.csv"
     params:
-       fastq = "processed/extractedAmplicons/{sample}_marker_{marker}.fastq",
+       fastq = "{experiment}/processed/extractedAmplicons/{sample}_marker_{marker}.fastq",
     output:
-       gz = "processed/extractedAmplicons/{sample}_marker_{marker}.fastq.gz",
+       gz = "{experiment}/processed/extractedAmplicons/{sample}_marker_{marker}.fastq.gz",
     conda:
         "envs/AmpSeqPython.yaml"
     shell:
-       "mkdir -p $(dirname processed/extractedAmplicons/{wildcards.sample}.log);"
-       "mkdir -p $(dirname logs/extractedAmplicons/{wildcards.sample}.log);"
-       "python scripts/extract_amplicons.py {input.bam} {input.exonfile} {input.primerfile} {wildcards.marker} {params.fastq} > logs/extractedAmplicons/{wildcards.sample}_marker_{wildcards.marker}.log;"
+       "mkdir -p $(dirname {wildcards.experiment}/processed/extractedAmplicons/{wildcards.sample}.log);"
+       "mkdir -p $(dirname {wildcards.experiment}/logs/extractedAmplicons/{wildcards.sample}.log);"
+       "python scripts/extract_amplicons.py {input.bam} {input.exonfile} {input.primerfile} {wildcards.marker} {params.fastq} > {wildcards.experiment}/logs/extractedAmplicons/{wildcards.sample}_marker_{wildcards.marker}.log;"
        "gzip {params.fastq}"
  
 rule get_primer_file:
     input:
-        amplicon_positions = "input/AmpliconPositions/amplicon_positions.csv",
-        genome = expand("input/reference/{genome}_Genome.fasta",genome=genome)
+        amplicon_positions = "{experiment}/input/AmpliconPositions/amplicon_positions.csv",
+        genome = expand("reference/{genome}_Genome.fasta",genome=genome)
     output:
-        "input/primer_files/primers_generated.csv"
+        "{experiment}/input/primer_files/primers_generated.csv"
     conda:
         "envs/bwa.yaml"
     shell:
@@ -141,11 +154,11 @@ rule get_primer_file:
         
 rule remove_exons_from_primer:
     input:
-        amplicon_file = 'input/AmpliconPositions/amplicon_positions.csv',
-        exon_file = 'input/AmpliconPositions/exon_positions.csv',
-        primer_file = 'input/primer_files/primers_generated.csv'
+        amplicon_file = '{experiment}/input/AmpliconPositions/amplicon_positions.csv',
+        exon_file = '{experiment}/input/AmpliconPositions/exon_positions.csv',
+        primer_file = '{experiment}/input/primer_files/primers_generated.csv'
     output:
-        "input/primer_files/primers_generated_no_introns.csv"
+        "{experiment}/input/primer_files/primers_generated_no_introns.csv"
     conda:
         "envs/AmpSeqPython.yaml"
     shell:
@@ -154,32 +167,31 @@ rule remove_exons_from_primer:
 
 rule callHaplotypes:
     input: 
-        fq="processed/extractedAmplicons/{sample}_marker_{marker}.fastq.gz",
-        primers="input/primer_files/primers_generated_no_introns.csv"
+        fq="{experiment}/processed/extractedAmplicons/{sample}_marker_{marker}.fastq.gz",
+        primers="{experiment}/input/primer_files/primers_generated_no_introns.csv"
     output:
-        haplotypeFile = "processed/Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",
-        haplotype_seqs = "processed/Haplotypes/{sample}/{marker}_HaplotypeSeq.fasta"
+        haplotypeFile = "{experiment}/processed/Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",
+        haplotype_seqs = "{experiment}/processed/Haplotypes/{sample}/{marker}_HaplotypeSeq.fasta"
     envmodules: 
         "R"
     shell: 
-        "mkdir -p $(dirname logs/callHaplotypes/{wildcards.sample}_{wildcards.marker}.log); "
-        "Rscript --vanilla scripts/CallHaplotypes.R {wildcards.marker} {input.fq} {input.primers} processed/Haplotypes/{wildcards.sample} "
-        "&> logs/callHaplotypes/{wildcards.sample}_{wildcards.marker}.log;"
+        "mkdir -p $(dirname {wildcards.experiment}/logs/callHaplotypes/{wildcards.sample}_{wildcards.marker}.log); "
+        "Rscript --vanilla scripts/CallHaplotypes.R {wildcards.marker} {input.fq} {input.primers} {wildcards.experiment}/processed/Haplotypes/{wildcards.sample} "
+        "&> {wildcards.experiment}/logs/callHaplotypes/{wildcards.sample}_{wildcards.marker}.log;"
         "touch {output}"
 
 rule call_SNPs:
     input:
-        haplotype_file = "processed/Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",
-        haplotype_seqs = "processed/Haplotypes/{sample}/{marker}_HaplotypeSeq.fasta",
-        primer_file = 'input/primer_files/primers_generated_no_introns.csv',
-        amplicon_postion_file = 'input/AmpliconPositions/amplicon_positions.csv',
-        exon_positions = 'input/AmpliconPositions/exon_positions.csv'
+        haplotype_file = "{experiment}/processed/Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",
+        haplotype_seqs = "{experiment}/processed/Haplotypes/{sample}/{marker}_HaplotypeSeq.fasta",
+        primer_file = '{experiment}/input/primer_files/primers_generated_no_introns.csv',
+        amplicon_postion_file = '{experiment}/input/AmpliconPositions/amplicon_positions.csv',
+        exon_positions = '{experiment}/input/AmpliconPositions/exon_positions.csv'
     output:
-        "processed/SNPs/{sample}_marker_{marker}.csv"
+        "{experiment}/processed/SNPs/{sample}_marker_{marker}.csv"
     conda:
         "envs/AmpSeqPython.yaml"
     shell:
-        "mkdir -p processed/master_files;"
         "python scripts/SNP_positions.py {input.haplotype_file} {input.haplotype_seqs} "
         "{input.primer_file} {input.amplicon_postion_file} {input.exon_positions} "
         "{wildcards.marker} {wildcards.sample} "
