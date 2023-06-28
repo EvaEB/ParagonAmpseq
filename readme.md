@@ -1,3 +1,7 @@
+**WARNING** the pipeline has recently been refactored but the documentation does not yet reflect this.
+The documentation will be updated soon but for now: the steps below are not up to date and running the pipeline like this WILL FAIL
+
+
 # Paragon AmpSeq Pipeline
 This is a snakemake analysis pipeline designed to extract haplotypes and SNPs from multiplexed amplicon sequencing experiments using Paragon's amplicon sequencing kits, but can be used for any amplicon sequencing experiment
 
