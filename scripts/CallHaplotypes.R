@@ -70,4 +70,4 @@ finalTab <- createFinalHaplotypTable(
   outputDir = outputDir, sampleTable = sampleTab, markerTable = sampleTab, referenceSeq = refSeq,
   snpList = snpList, postfix = '', minHaplotypCoverage = minCov, minReplicate = minOccHap, 
   detectability = detectionLimit, minSampleCoverage = minCovSample)
-
+print(finalTab)

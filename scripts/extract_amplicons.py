@@ -52,6 +52,7 @@ with open(outfile, 'w') as f:
                 if cigar[0] == 1: #insertion:
                     insert = [ref_positions[current_position]+1]*cigar[1]
                     ref_positions = ref_positions[:current_position] + insert + ref_positions[current_position:]
+
                 elif cigar[0] == 4: #soft clipping
                     sequence = sequence[:current_position]+sequence[current_position+cigar[1]:]
                     quals = quals[:current_position]+quals[current_position+cigar[1]:]
@@ -59,7 +60,7 @@ with open(outfile, 'w') as f:
                     pass
                 else:
                     raise 
-                if cigar[0] not in  [2,4]:
+                if cigar[0] not in  [2,4,5]:
                     current_position += cigar[1]
             
             ref_positions = np.array(ref_positions)

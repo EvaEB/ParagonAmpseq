@@ -85,9 +85,11 @@ rule align:
     conda:
         "envs/bwa.yaml"
     shell:
+        "mkdir -p $(dirname {wildcards.experiment}/logs/aligned/{wildcards.sample}.log);"
         "bwa mem {input.ref} {input.reads} > {output.al};"
         "samtools sort {output.al} > {output.al_sorted};"
         "samtools index {output.al_sorted};"
+        "samtools stats {output.al_sorted} | grep 'SN' >  {wildcards.experiment}/logs/aligned/{wildcards.sample}.log"
 
 rule getAmpliconPosition_list:
     input:
