@@ -195,11 +195,13 @@ rule call_SNPs:
     conda:
         "envs/AmpSeqPython.yaml"
     shell:
+        "mkdir -p $(dirname {wildcards.experiment}/logs/call_SNPs/{wildcards.sample}_{wildcards.marker}.log); "
         "python scripts/SNP_positions.py {input.haplotype_file} {input.haplotype_seqs} "
         "{input.primer_file} {input.amplicon_postion_file} {input.exon_positions} "
         "{wildcards.marker} {wildcards.sample} "
         "processed/master_files/{wildcards.marker}_haplotypes.csv "
-        "processed/master_files/{wildcards.marker}_SNPs.csv > {output}"
+        "processed/master_files/{wildcards.marker}_SNPs.csv > {output} "
+        "2> {wildcards.experiment}/logs/call_SNPs/{wildcards.sample}_{wildcards.marker}.log"
 
 rule plot_results:
     input:

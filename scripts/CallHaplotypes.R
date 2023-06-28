@@ -13,7 +13,8 @@ refSeq = DNAStringSet(markerTab$ReferenceSequence[markerTab$MarkerID == marker])
 names(refSeq) <- marker
 dir.create(outputDir)
 
-if (file.info(merged_file)$size == 0) {
+if (file.info(merged_file)$size < 100) { #file is empty - gzipped files have some size to them
+    print("no seqs in file -- quitting")
     quit()
 }
 ################################################################################

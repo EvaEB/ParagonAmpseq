@@ -1,0 +1,5 @@
+name: plotting
+dependencies:
+  - pandas
+  - numpy
+  - matplotlib

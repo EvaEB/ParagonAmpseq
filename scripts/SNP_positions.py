@@ -81,7 +81,12 @@ master_haplotypes_file = sys.argv[8]
 master_SNPs_file = sys.argv[9]
 
 # read in relevant files
-haplotypes = pd.read_csv(Haplotypes,sep='\t')
+try:
+  haplotypes = pd.read_csv(Haplotypes,sep='\t')
+except pd.errors.EmptyDataError:
+  sys.stderr.write("No data in file - terminating")
+  exit()  
+
 total_reads = haplotypes.Reads.sum()
 
 names = []
