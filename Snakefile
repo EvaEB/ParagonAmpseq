@@ -25,7 +25,8 @@ localrules: all, index, splitByMarker, getExons, get_primer_file
 
 rule all:
     input:
-       expand("{experiment}/processed/SNPs/{sample}_marker_{marker}.csv",sample=sample,marker=marker,experiment=experiment)
+       expand("{experiment}/processed/SNPs/{sample}_marker_{marker}.csv",sample=sample,marker=marker,experiment=experiment),
+       expand("{experiment}/plots/{sample}_highlighter.png",sample=sample,experiment=experiment)
 
 rule cutadapt:
     input: 
@@ -199,3 +200,14 @@ rule call_SNPs:
         "{wildcards.marker} {wildcards.sample} "
         "processed/master_files/{wildcards.marker}_haplotypes.csv "
         "processed/master_files/{wildcards.marker}_SNPs.csv > {output}"
+
+rule plot_results:
+    input:
+        expand("{{experiment}}/processed/SNPs/{{sample}}_marker_{marker}.csv",marker=marker)
+    output:
+        "{experiment}/plots/{sample}_highlighter.png"
+    conda:
+        "envs/plotting.yaml"
+    shell:
+        "python scripts/plot_results.py {wildcards.experiment} {wildcards.sample}"
+
