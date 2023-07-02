@@ -53,8 +53,12 @@ def determine_haplotype(seq,ref,marker):
         translation = [DNA_to_protein[i] for i in codons]
         translation_ref = [DNA_to_protein[i] for i in codons_ref]
         
-        AA_old = translation_ref[SNPpos_amplicon_0_AA]
-        AA_new = translation[SNPpos_amplicon_0_AA]
+        if SNPpos_amplicon_0_AA < len(translation_ref):
+            AA_old = translation_ref[SNPpos_amplicon_0_AA]
+            AA_new = translation[SNPpos_amplicon_0_AA]
+        else:
+            AA_old = '-'
+            AA_new = '-'
         NT_old = dif[1]
         NT_new = dif[2]
         mutIDs.append(f'{SNPpos_amplicon_0_NT+1}{NT_old}{NT_new}/{SNPpos_amplicon_0_AA+1}{AA_old}{AA_new}')
