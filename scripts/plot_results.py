@@ -49,6 +49,12 @@ with open(f'{directory}/logs/fusedReads/{sample}.log') as f:
         elif 'Not merged' in line:
             not_merged = int(line.split()[0])
             break
+          
+with open(f'{directory}/logs/fusedReads2_alignmentBased/{sample}.log') as f:
+    vals = []
+    for line in f.readlines():
+        vals.append(int(line.split(' ')[0]))
+    notMapped, merged2, notMerged = vals
 
 with open(f'{directory}/logs/aligned/{sample}.log') as f:
     for line in f.readlines():
@@ -66,7 +72,7 @@ for i in os.listdir(directory+'/processed/splitByMarker/'):
                 for line in f.readlines():
                     if '@' == line[0]:
                         length += 1
-            marker = i.split('.')[0]
+            marker = i.split('.fastq')[0]
             pos = marker.find('marker_')
             marker = marker[pos+7:]
             counts_per_marker[marker] = length
@@ -133,10 +139,13 @@ pos -= 1
 plt.text(0,pos,f'Pair merging    ',ha= 'right',size=15)
 
 plt.plot([0,merged],[pos,pos],marker='|',color='black')
-plt.text(0,pos+0.1,f'merged: {merged}')
+plt.text(0,pos+0.1,f'merged by vsearch: {merged}')
 
-plt.plot([merged,merged+not_merged*2],[pos,pos],marker='|',color='darkred')
-plt.text(merged,pos+0.1,f'not merged: {not_merged}',color='darkred')
+plt.plot([merged,merged+merged2],[pos,pos],marker='|',color='black')
+plt.text(merged,pos-0.1,f'merged by alignment: {merged2}',va='top')
+
+plt.plot([merged+merged2,merged+merged2+notMapped+notMerged],[pos,pos],marker='|',color='darkred')
+plt.text(merged+merged2,pos+0.1,f'not merged: {notMapped+notMerged}',color='darkred')
 
 # aligning
 pos -= 1
@@ -233,3 +242,34 @@ for file in os.listdir(directory+'/processed/SNPs/'):
         plt.title(marker)
 plt.suptitle(f'Sample: {sample}',size=20)
 plt.savefig(f'{experiment}/plots/{sample}_highlighter.png')
+
+plt.figure(figsize=[10,len(counts_per_marker)/3])
+
+ypos = 0
+first=True
+green = True
+grey=True
+for marker in sorted(counts_per_marker.keys()):
+    plt.barh(ypos,counts_per_marker[marker],color='black',label=['__nolabel__','assigned to marker',][first])
+    plt.barh(ypos,amplicon_counts[marker],color='grey',label=['__nolabel__','full amplicon recovered',][first])
+    plt.text(0,ypos,marker,ha='right')
+    pos_so_far = 0
+    for hap,count in haplotypes_per_amplicon[marker].items():
+        if count != 0:
+            if marker in hap:
+                color = 'green'
+                edgecolor = 'darkgreen'
+                label = label=['__nolabel__','haplotype called'][green]
+                green=False
+            else:
+                color = 'lightgrey'
+                edgecolor = 'lightgrey'
+                label = label=['__nolabel__','haplotype discarded (indels, chimera,...)'][grey]
+                grey = False
+            plt.barh(ypos,count,left=pos_so_far,color=color,edgecolor=edgecolor,label=label)
+            pos_so_far += count
+    ypos += 1
+    first=False
+plt.axis('off')
+plt.legend()
+plt.savefig(f'{experiment}/plots/{sample}_overview_markers.png')

@@ -26,7 +26,7 @@ localrules: all, index, splitByMarker, getExons, get_primer_file
 rule all:
     input:
        expand("{experiment}/processed/SNPs/{sample}_marker_{marker}.csv",sample=sample,marker=marker,experiment=experiment),
-       expand("{experiment}/plots/{sample}_highlighter.png",sample=sample,experiment=experiment)
+       expand("{experiment}/plots/{sample}_overview_markers.png",sample=sample,experiment=experiment),
 
 rule cutadapt:
     input: 
@@ -48,7 +48,9 @@ rule fuseReads:
         R1 = "{experiment}/processed/cutadapt/{sample}_R1.fastq.gz",
         R2 = "{experiment}/processed/cutadapt/{sample}_R2.fastq.gz"
     output: 
-        "{experiment}/processed/fusedReads/{sample}.fastq.gz"
+        "{experiment}/processed/fusedReads/{sample}_fuseReads.fastq",
+        "{experiment}/processed/fusedReads/{sample}_not_merged_fw.fastq",
+        "{experiment}/processed/fusedReads/{sample}_not_merged_rv.fastq"
     conda:
         "envs/vsearch.yaml"
     resources:
@@ -56,13 +58,44 @@ rule fuseReads:
     shell:
         "mkdir -p $(dirname {wildcards.experiment}/logs/fusedReads/{wildcards.sample}.log);"
         "mkdir -p $(dirname {wildcards.experiment}/processed/fusedReads/{wildcards.sample}.fastq);"
-        "vsearch --fastq_mergepairs {input.R1} --reverse {input.R2} --fastqout {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_merged.fastq "
-        "--fastqout_notmerged_fwd  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_not_merged_fw.fastq "
-        "--fastqout_notmerged_rev  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_not_merged_rv.fastq "
+        "vsearch --fastq_mergepairs {input.R1} --reverse {input.R2} --fastqout {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_fuseReads.fastq "
+        "--fastqout_notmerged_fwd  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_not_merged_fw.fastq "
+        "--fastqout_notmerged_rev  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_not_merged_rv.fastq "
         "--fastq_truncqual 1 --fastq_maxns 0 --fastq_allowmergestagger  &>  {wildcards.experiment}/logs/fusedReads/{wildcards.sample}.log;"
-        "cat  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_*.fastq >  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}.fastq;"
-        "rm  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_temp_*.fastq;"
-        "gzip  {wildcards.experiment}/processed/fusedReads/{wildcards.sample}.fastq"
+        
+rule alignUnmerged:
+    input:
+        ref = expand("reference/{genome}_Genome.fasta",genome=genome),
+        index = expand("reference/{genome}_Genome.fasta.sa",genome=genome),
+        fw = "{experiment}/processed/fusedReads/{sample}_not_merged_fw.fastq",
+        rv = "{experiment}/processed/fusedReads/{sample}_not_merged_rv.fastq"
+    output:
+        bam = "{experiment}/processed/fusedReads/{sample}_not_merged.bam"
+    conda:
+        "envs/bwa.yaml"
+    shell:
+        "bwa mem {input.ref} {input.fw} {input.rv} > tmp_{wildcards.sample}.sam;"
+        "samtools view -b tmp_{wildcards.sample}.sam > tmp_{wildcards.sample}.bam;"
+        "samtools sort tmp_{wildcards.sample}.bam > {output.bam};"
+        "samtools index {output.bam};"
+        "rm tmp_{wildcards.sample}.bam; rm tmp_{wildcards.sample}.sam"
+        
+
+rule fuseReads2_alignmentBased:
+    input: 
+        fused_before = "{experiment}/processed/fusedReads/{sample}_fuseReads.fastq",
+        to_fuse = "{experiment}/processed/fusedReads/{sample}_not_merged.bam"
+    output:
+        fqgz = "{experiment}/processed/fusedReads/{sample}_all.fastq.gz"
+    conda:
+        "envs/AmpSeqPython.yaml"
+    shell:
+        "mkdir -p $(dirname {wildcards.experiment}/logs/fusedReads2_alignmentBased/{wildcards.sample}.log);"
+        "python scripts/merge_alignment.py {input.to_fuse} {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_all.fastq > {wildcards.experiment}/logs/fusedReads2_alignmentBased/{wildcards.sample}.log;"
+        "cat {input.fused_before} >> {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_all.fastq;"
+        "gzip {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_all.fastq"
+
+
 
 rule index:
     input: 
@@ -77,7 +110,7 @@ rule index:
         
 rule align:
     input: 
-        reads = "{experiment}/processed/fusedReads/{sample}.fastq.gz",
+        reads = "{experiment}/processed/fusedReads/{sample}_all.fastq.gz",
         ref = expand("reference/{genome}_Genome.fasta",genome=genome),
         index = expand("reference/{genome}_Genome.fasta.sa",genome=genome)
     output:
@@ -207,7 +240,7 @@ rule plot_results:
     input:
         expand("{{experiment}}/processed/SNPs/{{sample}}_marker_{marker}.csv",marker=marker)
     output:
-        "{experiment}/plots/{sample}_highlighter.png"
+        "{experiment}/plots/{sample}_overview_markers.png"
     conda:
         "envs/plotting.yaml"
     shell:
