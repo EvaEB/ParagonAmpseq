@@ -25,16 +25,17 @@ this_amplicon = amplicons[amplicons.Amplicon == marker].iloc[0]
 exons = pd.read_csv(exon_positions,sep='\t')
 introns = []
 for protein, exons_this_protein in exons.groupby('proteinName'): 
-    if len(exons_this_protein) > 1:
+    if len(exons_this_protein) >= 1:
         # introns are the spaces between exons --> so positions between end of one exon and start of the next
-        intron_starts = exons_this_protein.exonEnd.iloc[:-1]
-        intron_ends = exons_this_protein.exonStart.iloc[1:]
+        intron_starts = exons_this_protein.exonEnd
+        intron_starts = (exons_this_protein.exonStart.iloc[0:1]-500).append(intron_starts)
+        intron_ends = exons_this_protein.exonStart
+        intron_ends = intron_ends.append(exons_this_protein.exonEnd.iloc[-1:]+500)
         introns.append(pd.DataFrame({'protein': protein,
                                      'chromosome': exons_this_protein.chromosome.iloc[0],
                                      'intronStart': list(intron_starts),
                                      'intronEnd': list(intron_ends)}))
 introns = pd.concat(introns).reset_index(drop=True)
-
 #iterate over the reads, extracting only the parts relevant for the amplicon (no primers, no introns)
 right_chromosome = introns[introns.chromosome == this_amplicon.chrom]
 introns_in_amplicon = right_chromosome[(right_chromosome.intronStart < this_amplicon.right_end) &  (right_chromosome.intronEnd > this_amplicon.left_start)]
@@ -45,7 +46,7 @@ with open(outfile, 'w') as f:
             ref_positions = read.get_reference_positions()
             sequence = read.seq
             quals = read.query_qualities
-            
+            dels = 0
             current_position=0
             # deal with insertions, clipping etc.
             for cigar in read.cigartuples:
@@ -62,32 +63,32 @@ with open(outfile, 'w') as f:
                     raise 
                 if cigar[0] not in  [2,4,5]:
                     current_position += cigar[1]
+                  
             
             ref_positions = np.array(ref_positions)
-            
-            #find primer regions to remove
-            to_remove = [ref_positions<this_amplicon.left_end,ref_positions>=this_amplicon.right_start-1]
+            # filter out overlaps: both start and end of amplicon need to be covered
+            if (this_amplicon.left_end in ref_positions) and (this_amplicon.right_start in ref_positions):
+                #find primer regions to remove
+                to_remove = [ref_positions<this_amplicon.left_end,ref_positions>=this_amplicon.right_start-1]
+    
+                # find intron regions to remove
+                for _,intron in introns_in_amplicon.iterrows():
+                    to_remove.append((intron.intronStart <= ref_positions) & (intron.intronEnd-1 > ref_positions))
+                to_remove = np.logical_or.reduce(to_remove)
+                #remove primers and introns from sequence and qualities
+                try:
+                    primers_introns_removed = np.array([i for i in sequence])[~to_remove]
+                except:
+                    print(len(read.seq))
+                    print(read.cigartuples)
+                    raise
 
-            # find intron regions to remove
-            for _,intron in introns_in_amplicon.iterrows():
-                to_remove.append((intron.intronStart < ref_positions) & (intron.intronEnd > ref_positions))
-            
-            to_remove = np.logical_or.reduce(to_remove)
-            
-            #remove primers and introns from sequence and qualities
-            try:
-                primers_introns_removed = np.array([i for i in sequence])[~to_remove]
-            except:
-                print(len(read.seq))
-                print(read.cigartuples)
-                raise
 
-
-            new_seq = ''.join(primers_introns_removed)
-            new_qualities = (np.array(quals)[~to_remove])
+                new_seq = ''.join(primers_introns_removed)
+                new_qualities = (np.array(quals)[~to_remove])
+                
+                # format as fastq and print
+                if len(new_seq)>0:
+                    fastq_string = "@%s\n%s\n+\n%s\n" % (read.query_name, new_seq, pysam.qualities_to_qualitystring(new_qualities))
+                    f.write(fastq_string)
             
-            # format as fastq and print
-            if len(new_seq)>0:
-                fastq_string = "@%s\n%s\n+\n%s\n" % (read.query_name, new_seq, pysam.qualities_to_qualitystring(new_qualities))
-                f.write(fastq_string)
-        

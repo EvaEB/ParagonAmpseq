@@ -28,7 +28,7 @@ with open(primer_file) as f:
             this_amplicon = amplicons.loc[marker]
             exons_right_chromosome = exons[exons.chromosome == this_amplicon.chrom]
             exons_right_positions = exons_right_chromosome[(exons_right_chromosome.exonStart < this_amplicon.right_start) & (exons_right_chromosome.exonEnd > this_amplicon.left_end)]
-            exon_positions = (np.hstack([np.arange(i.exonStart,i.exonEnd-1) for _,i in exons_right_positions.iterrows()]))
+            exon_positions = (np.hstack([np.arange(i.exonStart-1,i.exonEnd) for _,i in exons_right_positions.iterrows()]))
             amplicon_positions = np.arange(this_amplicon.left_end,this_amplicon.right_start-1)
             positions_to_keep = [i for i in amplicon_positions if i in exon_positions]
             new_ref = ''.join([ref[i-this_amplicon.left_end] for i in positions_to_keep])

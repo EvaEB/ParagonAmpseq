@@ -220,7 +220,7 @@ plt.title(f'Sample: {sample}',size=20)
 plt.savefig(f'{experiment}/plots/{sample}_pipeline.png')
 
 
-n_markers = len(haplotypes_per_amplicon)
+n_markers = len(amp_positions)
 plt.figure(figsize=[20,n_markers])
 fignumber = 1
 for file in os.listdir(directory+'/processed/SNPs/'):
@@ -254,6 +254,8 @@ for marker in sorted(counts_per_marker.keys()):
     plt.barh(ypos,amplicon_counts[marker],color='grey',label=['__nolabel__','full amplicon recovered',][first])
     plt.text(0,ypos,marker,ha='right')
     pos_so_far = 0
+    if marker not in haplotypes_per_amplicon:
+      continue
     for hap,count in haplotypes_per_amplicon[marker].items():
         if count != 0:
             if marker in hap:

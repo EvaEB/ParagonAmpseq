@@ -104,16 +104,7 @@ with open(haplotype_seqs) as f:
         else:
             seqs[-1] += line.strip()
       
-#try:
-#    master_haplotypes = pd.read_csv(master_haplotypes_file,sep='\t')
-#except FileNotFoundError:
-#    master_haplotypes = pd.DataFrame(columns=['haplotype_ID','seq'])
-
 SNP_names = ['SNP_ID','chromosome','genome_pos','gene_pos_nt','amplicon_position_nt','nt_old','nt_new','gene_position_AA','amplicon_position_AA','AA_old','AA_new']
-#try:
-#    master_SNPs = pd.read_csv(master_SNPs_file,sep='\t')
-#except FileNotFoundError:
-#    master_SNPs = pd.DataFrame(columns=SNP_names)
 
 
 with open(primer_file) as f:
@@ -140,31 +131,14 @@ for seq,name in zip(seqs,names):
     freq = n_reads/total_reads
     
     gene_details = []
-    #if any(seq == master_haplotypes.seq):
-    #    haplotype_ID = (master_haplotypes[seq == master_haplotypes.seq].iloc[0].haplotype_ID)
-    #    SNP_IDs = haplotype_ID.split('_')[1].split('-')
-    #    SNP_IDs = [marker+'_'+i for i in SNP_IDs]
-    #else:
     haplotype_ID, SNP_IDs,SNP_details = determine_haplotype(seq,ref,marker)
-    #new_line = pd.DataFrame({'haplotype_ID':[haplotype_ID],'seq':[seq]})
-    #master_haplotypes = pd.concat((master_haplotypes,new_line),ignore_index=True)
     out = '\t'.join([sample,marker,haplotype_ID]) + '\t'
 
     if (len(SNP_IDs) > 0) and (SNP_IDs[0] != marker+'_WT'):
         for s,SNP_ID in enumerate(SNP_IDs):
-            #if any(SNP_ID == master_SNPs.SNP_ID):
-            #    gene_details.append(list(master_SNPs[SNP_ID == master_SNPs.SNP_ID].iloc[0]))
-            #else:
-            #    try:
-            #        SNP_detail = SNP_details[s]
-            #    except NameError:
-            #        raise NameError(f"{SNP_ID}\n{haplotype_ID}")
             SNP_detail = SNP_details[s]
             SNP_names = ['SNP_ID','chromosome','genome_pos','gene_pos_nt','amplicon_position_nt','nt_old','nt_new','gene_position_AA','amplicon_position_AA','AA_old','AA_new']
             gene_details.append([f'{marker}_{SNP_ID}',chromosome] + SNP_detail)
-            #new_line = pd.DataFrame({i:[j] for i,j in zip(SNP_names,gene_details[-1])})
-            #master_SNPs = pd.concat((master_SNPs,new_line),ignore_index=True)
-
     else:
         gene_details.append(['NA']*11)
         gene_details[-1][1] = chromosome
@@ -176,5 +150,3 @@ for seq,name in zip(seqs,names):
 
         print(out + '\t'.join([str(i) for i in gene]) + '\t' + str(freq))
         
-#master_haplotypes.to_csv(master_haplotypes_file,sep='\t',index=False)
-#master_SNPs.to_csv(master_SNPs_file,sep='\t',index=False)
