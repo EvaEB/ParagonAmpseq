@@ -200,7 +200,7 @@ rule remove_exons_from_primer:
     output:
         "{experiment}/input/primer_files/primers_generated_no_introns.csv"
     conda:
-        "envs/AmpSeqPython.yaml"
+        "envs/AmpSeqPython.yaml"        
     shell:
         "python scripts/remove_introns_ref.py {input.amplicon_file} {input.exon_file} {input.primer_file} > {output}"
 
@@ -250,7 +250,7 @@ rule combine_SNPs:
     params:
         triplicate = triplicate
     shell:
-        "python scripts/combine_SNPs.py {experiment}/processed/SNPs/ {triplicate}  {output}"
+        "python scripts/combine_SNPs.py {experiment }/processed/SNPs/ {triplicate}  {output}"
 
 
 rule plot_results:
