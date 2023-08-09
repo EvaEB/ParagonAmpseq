@@ -3,6 +3,10 @@ try:
 except KeyError:
   experiment = 'DATA'
 
+try:
+    triplicate = config['triplicate']
+except KeyError:
+    triplicate = 'None'
 
 try:
   genome = config['genome'] 
@@ -25,7 +29,7 @@ localrules: all, index, splitByMarker, getExons, get_primer_file
 
 rule all:
     input:
-       expand("{experiment}/processed/SNPs/{sample}_marker_{marker}.csv",sample=sample,marker=marker,experiment=experiment),
+       expand("{experiment}/all_SNPs.csv",experiment=experiment),
        expand("{experiment}/plots/{sample}_overview_markers.png",sample=sample,experiment=experiment),
 
 rule cutadapt:
@@ -235,6 +239,19 @@ rule call_SNPs:
         "processed/master_files/{wildcards.marker}_haplotypes.csv "
         "processed/master_files/{wildcards.marker}_SNPs.csv > {output} "
         "2> {wildcards.experiment}/logs/call_SNPs/{wildcards.sample}_{wildcards.marker}.log"
+
+rule combine_SNPs:
+    input:
+        expand("{{experiment}}/processed/SNPs/{sample}_marker_{marker}.csv",sample=sample,marker=marker)
+    output:
+        "{experiment}/all_SNPs.csv"
+    conda:
+        "envs/AmpSeqPython.yaml"
+    params:
+        triplicate = triplicate
+    shell:
+        "python scripts/combine_SNPs.py {experiment}/processed/SNPs/ {triplicate}  {output}"
+
 
 rule plot_results:
     input:

@@ -148,5 +148,5 @@ for seq,name in zip(seqs,names):
             if gene[i] != 'NA':
                 gene[i] += 1 #switch to one-based indexing for output
 
-        print(out + '\t'.join([str(i) for i in gene]) + '\t' + str(freq))
+        print(out + '\t'.join([str(i) for i in gene]) + '\t' + str(freq) + '\t' + str(total_reads))
         
