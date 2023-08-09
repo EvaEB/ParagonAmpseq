@@ -115,7 +115,7 @@ rule align:
         index = expand("reference/{genome}_Genome.fasta.sa",genome=genome)
     output:
         al = "{experiment}/processed/aligned/{sample}.sam",
-        al_sorted = "{experiment}/processed/aligned/{sample}_sorted.sam",
+        al_sorted = "{experiment}/processed/aligned/{sample}_sorted.bam",
     conda:
         "envs/bwa.yaml"
     shell:
