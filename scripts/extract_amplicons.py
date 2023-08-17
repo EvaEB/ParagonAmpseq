@@ -4,7 +4,6 @@ removes primers & intronic regions from reads
 usage: python extract_amplicons.py reads.bam exon_positions.csv amplicon_positions.csv marker out.fastq
 """
 import sys 
-
 import pysam
 import pandas as pd
 import numpy as np
@@ -36,6 +35,7 @@ for protein, exons_this_protein in exons.groupby('proteinName'):
                                      'intronStart': list(intron_starts),
                                      'intronEnd': list(intron_ends)}))
 introns = pd.concat(introns).reset_index(drop=True)
+
 #iterate over the reads, extracting only the parts relevant for the amplicon (no primers, no introns)
 right_chromosome = introns[introns.chromosome == this_amplicon.chrom]
 introns_in_amplicon = right_chromosome[(right_chromosome.intronStart < this_amplicon.right_end) &  (right_chromosome.intronEnd > this_amplicon.left_start)]

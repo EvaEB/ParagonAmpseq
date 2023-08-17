@@ -23,28 +23,59 @@ DNA_to_protein = {
         'TGC':'C', 'TGT':'C', 'TGA':'*', 'TGG':'W',
     }
 
-def determine_haplotype(seq,ref,marker):
+rev_complement = {'A':'T',
+                  'T':'A',
+                  'C':'G',
+                  'G':'C'}
+
+def determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT):
     diffs = [(i,ref[i],seq[i]) for i in range(len(seq)) if seq[i]!=ref[i]]
     exons_in_this_chromosome = exons[(exons.chromosome == chromosome)]
+    strand = exons_in_this_chromosome[exons_in_this_chromosome.exonEnd >= AmpliconStart_genome_0_NT].iloc[0].strand
+    gene = exons_in_this_chromosome[exons_in_this_chromosome.exonEnd >= AmpliconStart_genome_0_NT].iloc[0].proteinName
+
+    if strand == '+':
+        if len(exons_in_this_chromosome[(exons_in_this_chromosome.exonStart < AmpliconStart_genome_0_NT) & (exons_in_this_chromosome.exonEnd > AmpliconEnd_genome_0_NT)]) == 0:
+                start_after = (exons_in_this_chromosome[exons_in_this_chromosome.exonStart > AmpliconStart_genome_0_NT])
+                AmpliconStart_genome_0_NT = start_after.iloc[start_after.exonStart.argmin()].exonStart - 1
+        elif strand == '-':
+            raise NotImplementedError('amplicon starting in intron on negative strand not yet implemented')
 
     mutIDs = []
     mut_details = []
     for dif in diffs:
         SNPpos_amplicon_0_NT = dif[0]
         SNPpos_genome_0_NT = AmpliconStart_genome_0_NT + SNPpos_amplicon_0_NT
-        before_and_including = exons_in_this_chromosome[exons_in_this_chromosome.exonStart<=SNPpos_genome_0_NT]
-        exonWithSNPStart_genome_0_NT = before_and_including.exonStart.max() - 1
-        if len(before_and_including) == 1:
-            SNPpos_gene_0_NT = SNPpos_genome_0_NT - exonWithSNPStart_genome_0_NT
+        if strand == '+':
+            before_and_including = exons_in_this_chromosome[exons_in_this_chromosome.exonStart<=SNPpos_genome_0_NT]
+            exonWithSNPStart_genome_0_NT = before_and_including.exonStart.max() - 1
+            if len(before_and_including) == 1:
+                SNPpos_gene_0_NT = SNPpos_genome_0_NT - exonWithSNPStart_genome_0_NT
+            else:
+                before = before_and_including[before_and_including.exonStart < exonWithSNPStart_genome_0_NT]
+                before = before[before.proteinName == gene]
+
+                SNPpos_gene_0_NT = ((before.exonEnd - (before.exonStart - 1)).sum()+(SNPpos_genome_0_NT-exonWithSNPStart_genome_0_NT))
         else:
-            before = before_and_including[before_and_including.exonStart < exonWithSNPStart_genome_0_NT]
-            SNPpos_gene_0_NT = ((before.exonEnd - (before.exonStart - 1)).sum()+(SNPpos_genome_0_NT-exonWithSNPStart_genome_0_NT))
-        
+            AmpliconLength = len(seq)
+            after_and_including = exons_in_this_chromosome[exons_in_this_chromosome.exonEnd>=SNPpos_genome_0_NT]
+            exonWithSNPEnd_genome_0_NT = after_and_including.exonEnd.min() - 1
+            if len(after_and_including) == 1:
+                SNPpos_gene_0_NT = exonWithSNPEnd_genome_0_NT - SNPpos_genome_0_NT + 1
+            else:
+                raise NotImplementedError('reverse strand genes with introns not yet implemented')
+            
+            SNPpos_amplicon_0_NT = AmpliconLength - SNPpos_amplicon_0_NT #convert to - strand
+            
         SNPpos_gene_0_AA = SNPpos_gene_0_NT//3
+        
         gene_base_position = SNPpos_gene_0_NT%3
         offset = int((SNPpos_amplicon_0_NT-gene_base_position)%3)
         SNPpos_amplicon_0_AA = (SNPpos_amplicon_0_NT-offset)//3
-
+    
+        if strand == '-': #reverse complement sequence and reference
+            seq = ''.join(rev_complement[i] for i in seq[::-1])
+            ref = ''.join(rev_complement[i] for i in ref[::-1])
         codons = [seq[i+offset:i+offset+3] for i in range(0,len(seq),3)]
         codons_ref = [ref[i+offset:i+offset+3] for i in range(0,len(seq),3)]
         while len(codons[-1]) != 3:
@@ -59,19 +90,22 @@ def determine_haplotype(seq,ref,marker):
         else:
             AA_old = '-'
             AA_new = '-'
-        NT_old = dif[1]
-        NT_new = dif[2]
+        if strand == '+':
+            NT_old = dif[1]
+            NT_new = dif[2]
+        else:
+            NT_old = rev_complement[dif[1]]
+            NT_new = rev_complement[dif[2]]
         mutIDs.append(f'{SNPpos_amplicon_0_NT+1}{NT_old}{NT_new}/{SNPpos_amplicon_0_AA+1}{AA_old}{AA_new}')
         mut_details.append([SNPpos_genome_0_NT, 
                             SNPpos_gene_0_NT, SNPpos_amplicon_0_NT, NT_old, NT_new,
                             SNPpos_gene_0_AA, SNPpos_amplicon_0_AA, AA_old, AA_new])
-
+    
     if len(mutIDs)>0:
         haplotypeID = marker + '_' + '-'.join(mutIDs)
     else:
         haplotypeID = marker + '_WT'
     return haplotypeID, mutIDs, mut_details
-
 
 # command line args
 Haplotypes = sys.argv[1]
@@ -131,7 +165,7 @@ for seq,name in zip(seqs,names):
     freq = n_reads/total_reads
     
     gene_details = []
-    haplotype_ID, SNP_IDs,SNP_details = determine_haplotype(seq,ref,marker)
+    haplotype_ID, SNP_IDs,SNP_details = determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT)
     out = '\t'.join([sample,marker,haplotype_ID]) + '\t'
 
     if (len(SNP_IDs) > 0) and (SNP_IDs[0] != marker+'_WT'):

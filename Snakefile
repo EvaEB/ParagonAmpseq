@@ -29,6 +29,7 @@ localrules: all, index, splitByMarker, getExons, get_primer_file
 
 rule all:
     input:
+       expand("{experiment}/processed/SNPs/{sample}_marker_{marker}.csv",experiment=experiment,sample=sample, marker=marker),
        expand("{experiment}/all_SNPs.csv",experiment=experiment),
        expand("{experiment}/plots/{sample}_overview_markers.png",sample=sample,experiment=experiment),
 
@@ -141,7 +142,7 @@ rule getAmpliconPosition_list:
 
 rule splitByMarker:
     input:
-        al = "{experiment}/processed/aligned/{sample}_sorted.sam",
+        al = "{experiment}/processed/aligned/{sample}_sorted.bam",
         ampliconPos = "{experiment}/input/AmpliconPositions/amplicon_position_list.csv"
     output:
         bamfile = "{experiment}/processed/splitByMarker/{sample}_marker_{marker}.bam",
@@ -250,7 +251,7 @@ rule combine_SNPs:
     params:
         triplicate = triplicate
     shell:
-        "python scripts/combine_SNPs.py {experiment }/processed/SNPs/ {triplicate}  {output}"
+        "python scripts/combine_SNPs.py {wildcards.experiment}/processed/SNPs/ {triplicate}  {output}"
 
 
 rule plot_results:
