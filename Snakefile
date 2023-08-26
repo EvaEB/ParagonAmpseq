@@ -4,7 +4,7 @@ except KeyError:
   experiment = 'DATA'
 
 try:
-    triplicate = config['triplicate']
+    triplicate = config['triplicate'] #left if replicate number is first, right if replicate number is last
 except KeyError:
     triplicate = 'None'
 
@@ -12,7 +12,6 @@ try:
   genome = config['genome'] 
 except KeyError:
   genome = 'PlasmoDB-62_Pfalciparum3D7'
-
 
 with open(experiment+'/samples') as f:
  sample = f.readlines()

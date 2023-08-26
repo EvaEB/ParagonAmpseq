@@ -32,12 +32,12 @@ git clone git@github.com:EvaEB/ParagonAmpseq.git
 Snakemake relies on the presence and absence of certain files to decide what components to execute next. It is therefore important to not rename files and maintain the directory structure described here
 
 ### Experiment Folder
-Create a folder within this directory for each independent experiment (e.g. seperate sequencing run with differing markers). This will contain the raw & processed data and any files specifically related to this experiment (e.g. what markers and samples are present)
+Create a folder within this directory for each independent experiment (e.g. separate sequencing run with differing markers). This will contain the raw & processed data and any files specifically related to this experiment (e.g. what markers and samples are present)
 
 
 #### sequencing files
 the raw sequencing sequencing files should be placed in the folder `{experiment_name}/input/raw`. 
-The sequencing files are assumed to already by demultiplexed by sample, and files should be named `{sample}_R1.fastq.gz` for the forward reads and `{sample}_R2.fastq.gz` for the reverse reads, where {sample} is replaced with the sample name of your choice.
+The sequencing files are assumed to already be demultiplexed by sample, and files should be named `{sample}_R1.fastq.gz` for the forward reads and `{sample}_R2.fastq.gz` for the reverse reads, where {sample} is replaced with the sample name of your choice.
 
 Minimal example:
 ```
@@ -90,33 +90,38 @@ before running the pipeline, the directory structure should now look like this
 ```
 
 ### Running the pipeline
-Once the directory structure is set up, make sure you are in the main directory (`cd ParagonAmpseq`), then enter the following (if more than one core is available, replace `--cores 1` by however many cores available, 
+Once the directory structure is set up, make sure you are in the main directory (`cd ParagonAmpseq`), then enter the following (if more than one core is available, replace `--cores 1` by however many cores available.
+If the experiment is run in triplicate
 
 When running locally:
 ```bash
 mamba activate snakemake #or whatever you named the environment containing snakemake
-snakemake --cores 1 --use-conda --config experiment='{experiment_name} genome='{genome_name}'
+snakemake --cores 1 --use-conda --config experiment='{experiment_name}' genome='{genome_name} triplicate='{left|right|None}'
 ``` 
 
 When running in a cluster environment (e.g. SciCore):
 ```bash
 mamba activate snakemake #or whatever you named the environment containing snakemake
-snakemake --cores 1 --use-conda --use-envmodules --config experiment='{experiment_name} genome='{genome_name}'
+snakemake --cores 1 --use-conda --use-envmodules --config experiment='{experiment_name}' genome='{genome_name}' triplicate='{left|right|None}'
 ```
 
-replacing `{experiment_name}` and `{genome_name}` by the right values. If these are not provided, they default to `DATA` and `PlasmoDB-62_Pfalciparum3D7` )
+replacing `{experiment_name}` and `{genome_name}` by the right values. If these are not provided, they default to `DATA` and `PlasmoDB-62_Pfalciparum3D7` ). 
+When the experiment was done in triplicate, indicate this by providing the `--triplicate` option. This can be set to either `left` or `right`, indicating the position in the sample name where the replicate number is positioned. For example, if the samples are named `1_sample`, `2_sample` and `3_sample`, use the option `triplicate='left'`. This option defaults to `None`, indicating no triplicates.
 
 
 ## Output & Further analysis
-Once the pipeline has completed, there will be three new folders in the `{experiment_name}` folder:
+Once the pipeline has completed, there will be three new folders and one new file in the `{experiment_name}` folder:
 ```
 ├── 📁 {experiment_name}
 │   ├── ...
 │   ├── 📁 logs
 │   ├── 📁 plots
 │   └── 📁 processed
+│   └── 🖹 all_SNPs.csv
 ```
-`processed` is the main output folder. Each pipeline step has its own folder, with the main output (SNP and haplotype frequencies) stored in `SNPs`: for each marker & sample, there is a .csv file containing complete information which can be used for any downstream analyses.
+`all_SNPs.csv` is the main output. This file contains the SNPs & haplotypes for all samples and markers in the experiment, and can be used for downstream appications. 
+
+`processed` contains all intermediate output, some of which might be useful for analysis. Each pipeline step has its own folder. 
 
 `logs` contains logging files from the pipeline, which are used to create some of the plots and can be used to debug if any issues arise. There will be a folder per pipeline step with one file per time this step was run.
 
