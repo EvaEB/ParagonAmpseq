@@ -106,7 +106,7 @@ for marker in counts_per_marker:
     except FileNotFoundError:
         pass
 
-
+# pipeline overview plot
 plt.figure(figsize=[20,4])
 
 #raw reads
@@ -219,7 +219,7 @@ plt.axis('off')
 plt.title(f'Sample: {sample}',size=20)
 plt.savefig(f'{experiment}/plots/{sample}_pipeline.png')
 
-
+# highlighter plot
 n_markers = len(amp_positions)
 plt.figure(figsize=[20,n_markers])
 fignumber = 1
@@ -227,7 +227,7 @@ for file in os.listdir(directory+'/processed/SNPs/'):
     if file[:file.find('_marker')] == sample:
         marker = file[file.find('marker_')+7:-4]
         amplicon_length = (amp_positions[amp_positions.Amplicon == marker].right_start - amp_positions[amp_positions.Amplicon == marker].left_end).iloc[0]
-        SNPs = pd.read_csv(directory +'/processed/SNPs/'+ file,sep='\t',names= ['sample','marker','haplotype','SNP_ID','chromosome','genome_pos','gene_pos_nt','amplicon_position_nt','nt_old','nt_new','gene_position_AA','amplicon_position_AA','AA_old','AA_new','fraction'])
+        SNPs = pd.read_csv(directory +'/processed/SNPs/'+ file,sep='\t',names= ['sample','marker','haplotype','SNP_ID','chromosome','genome_pos','gene_pos_nt','amplicon_position_nt','nt_old','nt_new','gene_position_AA','amplicon_position_AA','AA_old','AA_new','fraction','coverage'])
         ypos = 0
         plt.subplot(n_markers,1,fignumber)
         fignumber += 1
@@ -236,6 +236,7 @@ for file in os.listdir(directory+'/processed/SNPs/'):
             positions = (SNPs_this_haplotype.amplicon_position_nt)
             if str(SNPs_this_haplotype.nt_new.iloc[0]) in ['A','T','G','C']:
                 plt.scatter(positions, [ypos for i in positions],marker='|',c=[colors_nt[i] for i in SNPs_this_haplotype.nt_new])
+            plt.text(amplicon_length,ypos,f'{SNPs_this_haplotype.fraction.iloc[0]:.2f}')
             ypos -=1
         plt.axis([0,longest_amplicon,1,ypos])
         plt.axis('off')
@@ -243,6 +244,7 @@ for file in os.listdir(directory+'/processed/SNPs/'):
 plt.suptitle(f'Sample: {sample}',size=20)
 plt.savefig(f'{experiment}/plots/{sample}_highlighter.png')
 
+# Overview markers
 plt.figure(figsize=[10,len(counts_per_marker)/3])
 
 ypos = 0
@@ -262,6 +264,7 @@ for marker in sorted(counts_per_marker.keys()):
                 color = 'green'
                 edgecolor = 'darkgreen'
                 label = label=['__nolabel__','haplotype called'][green]
+                plt.text(count+pos_so_far-1,ypos,count,ha='right',va='center',color='white',size=8)
                 green=False
             else:
                 color = 'lightgrey'
