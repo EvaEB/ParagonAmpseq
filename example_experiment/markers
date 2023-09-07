@@ -1,0 +1,4 @@
+#list markers, as they are named in input/ampliconPositions/amplicon_positions.csv. One marker per line
+marker1
+marker2
+marker3
