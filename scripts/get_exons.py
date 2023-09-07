@@ -1,7 +1,7 @@
 """
 script that extracts exon positions of all genes covered by amplicons
 
-usage: python get_exons.py reference.gff amplicon_positions.csv output_file.csv
+usage: python get_exons.py [reference.gff] [amplicon_positions.csv] [output_file.csv]
 - reference.gff is a gff file containing features of the reference genome. It 
   should contain all genes and exons of interest and is typically downloaded
   from a database (e.g. PlasmoDB)

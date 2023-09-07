@@ -1,3 +1,17 @@
+"""
+plot_results.py
+
+author: Eva Bons
+
+generates several plots of the pipeline statistics and final results:
+- {sample}_overview_markers.png - diagnostics for haplotype extraction: the length of the bar represents the amount of reads aligning to this marker in total, green part indicates how many of these reads could successfully be used for haplotype calling. Large black proportions indicate many incomplete reads (not fully covering the amplicon, e.g. due to failing to merge), large grey areas indicate likely presence of indels.
+- {sample}_highligher.png - an overview of the SNPs present per haplotype for every marker in the sample. 
+- {sample}_pipeline.png - an overview of how many reads get processed in each step of the pipeline.  
+
+The script assumes files to be in certain directories, script will only work in context of a snakemake run
+
+usage: python plot_results.py [experiment] [sample]
+"""
 import matplotlib.pyplot as plt
 import matplotlib
 import os 
@@ -6,21 +20,25 @@ import numpy as np
 import pandas as pd
 import sys
 
+# set up variables
 experiment = sys.argv[1]
 sample = sys.argv[2]
 directory = experiment
 samples = [i[:-4] for i in os.listdir(directory+'/logs/fusedReads/')]
 amp_positions = pd.read_csv(f'{directory}/input/AmpliconPositions/amplicon_positions.csv',sep='\t')
 longest_amplicon = max(amp_positions.right_start - amp_positions.left_end)
-
-colors = [(0.6091898794104678, 0.0, 1.0, 1.0), (1.0, 0.18529430294136176, 0.0, 1.0), (0.4944837886014357, 1.0, 0.0, 1.0), (0.023161131617013827, 0.016177736765972346, 1.0, 1.0), (0.0, 1.0, 0.20036897885323546, 1.0), (0.0, 0.08566375661963932, 1.0, 1.0), (0.0, 1.0, 0.8952182373286364, 1.0), (0.10073339485104227, 1.0, 0.0, 1.0), (0.0, 0.201472695957991, 1.0, 1.0), (1.0, 0.6022064845594256, 0.0, 1.0), (1.0, 0.0, 0.7886036360301064, 1.0), (0.30808663713075457, 0.0, 1.0, 1.0), (0.0, 0.6878702411790647, 1.0, 1.0), (1.0, 0.0, 0.18639715147068092, 1.0), (0.7029398794104678, 1.0, 0.0, 1.0), (0.0, 1.0, 0.7099251017351961, 1.0), (1.0, 0.0, 0.8812507875007872, 1.0), (0.9113959702194997, 1.0, 0.0, 1.0), (1.0, 0.48639754522107453, 0.0, 1.0), (0.09963054632172239, 0.0, 1.0, 1.0), (0.8176459702194999, 0.0, 1.0, 1.0), (1.0, 0.9033097268391386, 0.0, 1.0), (0.5165427279397867, 0.0, 1.0, 1.0), (1.0, 0.0, 0.27904430294136173, 1.0), (0.19338054632172286, 1.0, 0.0, 1.0), (0.0, 0.38676699889935195, 1.0, 1.0), (0.0, 0.9889734834587774, 1.0, 1.0), (0.0, 1.0, 0.10772241105651532, 1.0), (0.4018366371307548, 1.0, 0.0, 1.0), (0.0, 1.0, 0.594116891989296, 1.0), (0.0, 0.8036791805174157, 1.0, 1.0), (0.0235287477934537, 1.0, 0.015442504413092598, 1.0), (0.7955870308811486, 1.0, 0.0, 1.0), (1.0, 0.09264715147068088, 0.0, 1.0), (0.9801467577202873, 0.0, 0.9772064845594255, 1.0), (0.0, 0.5025759382377031, 1.0, 1.0), (1.0, 0.7875007875007874, 0.0, 1.0), (1.0, 0.6948536360301065, 0.0, 1.0), (1.0, 0.0, 0.5801475452210745, 1.0), (0.0, 0.5952230897083839, 1.0, 1.0), (0.0, 1.0, 0.29301554664995555, 1.0), (0.7018370308811488, 0.0, 1.0, 1.0), (0.40073378860143555, 0.0, 1.0, 1.0), (0.2154394856600736, 0.0, 1.0, 1.0), (0.0, 0.29411984742867114, 1.0, 1.0), (0.309189485660074, 1.0, 0.0, 1.0), (0.9102931216901803, 0.0, 1.0, 1.0), (0.0, 1.0, 0.8025716695319163, 1.0), (0.0, 1.0, 0.4088237563958557, 1.0), (1.0, 0.3011032422797128, 0.0, 1.0), (1.0, 0.0, 0.4875003937503936, 1.0), (0.9805143738967269, 0.9764712522065463, 0.0, 1.0), (0.6102927279397868, 1.0, 0.0, 1.0), (1.0, 0.0, 0.39485324227971275, 1.0), (0.0, 0.8963263319880966, 1.0, 1.0), (1.0, 0.0, 0.0, 1.0), (1.0, 0.0, 0.09375, 1.0), (1.0, 0.3937503937503937, 0.0, 1.0), (1.0, 0.0, 0.6959564845594255, 1.0), (0.0, 1.0, 0.5014703241925758, 1.0)]
-
 NT = 'ACGT'
 
+#define some colors
+colors = [(0.6091898794104678, 0.0, 1.0, 1.0), (1.0, 0.18529430294136176, 0.0, 1.0), (0.4944837886014357, 1.0, 0.0, 1.0), (0.023161131617013827, 0.016177736765972346, 1.0, 1.0), (0.0, 1.0, 0.20036897885323546, 1.0), (0.0, 0.08566375661963932, 1.0, 1.0), (0.0, 1.0, 0.8952182373286364, 1.0), (0.10073339485104227, 1.0, 0.0, 1.0), (0.0, 0.201472695957991, 1.0, 1.0), (1.0, 0.6022064845594256, 0.0, 1.0), (1.0, 0.0, 0.7886036360301064, 1.0), (0.30808663713075457, 0.0, 1.0, 1.0), (0.0, 0.6878702411790647, 1.0, 1.0), (1.0, 0.0, 0.18639715147068092, 1.0), (0.7029398794104678, 1.0, 0.0, 1.0), (0.0, 1.0, 0.7099251017351961, 1.0), (1.0, 0.0, 0.8812507875007872, 1.0), (0.9113959702194997, 1.0, 0.0, 1.0), (1.0, 0.48639754522107453, 0.0, 1.0), (0.09963054632172239, 0.0, 1.0, 1.0), (0.8176459702194999, 0.0, 1.0, 1.0), (1.0, 0.9033097268391386, 0.0, 1.0), (0.5165427279397867, 0.0, 1.0, 1.0), (1.0, 0.0, 0.27904430294136173, 1.0), (0.19338054632172286, 1.0, 0.0, 1.0), (0.0, 0.38676699889935195, 1.0, 1.0), (0.0, 0.9889734834587774, 1.0, 1.0), (0.0, 1.0, 0.10772241105651532, 1.0), (0.4018366371307548, 1.0, 0.0, 1.0), (0.0, 1.0, 0.594116891989296, 1.0), (0.0, 0.8036791805174157, 1.0, 1.0), (0.0235287477934537, 1.0, 0.015442504413092598, 1.0), (0.7955870308811486, 1.0, 0.0, 1.0), (1.0, 0.09264715147068088, 0.0, 1.0), (0.9801467577202873, 0.0, 0.9772064845594255, 1.0), (0.0, 0.5025759382377031, 1.0, 1.0), (1.0, 0.7875007875007874, 0.0, 1.0), (1.0, 0.6948536360301065, 0.0, 1.0), (1.0, 0.0, 0.5801475452210745, 1.0), (0.0, 0.5952230897083839, 1.0, 1.0), (0.0, 1.0, 0.29301554664995555, 1.0), (0.7018370308811488, 0.0, 1.0, 1.0), (0.40073378860143555, 0.0, 1.0, 1.0), (0.2154394856600736, 0.0, 1.0, 1.0), (0.0, 0.29411984742867114, 1.0, 1.0), (0.309189485660074, 1.0, 0.0, 1.0), (0.9102931216901803, 0.0, 1.0, 1.0), (0.0, 1.0, 0.8025716695319163, 1.0), (0.0, 1.0, 0.4088237563958557, 1.0), (1.0, 0.3011032422797128, 0.0, 1.0), (1.0, 0.0, 0.4875003937503936, 1.0), (0.9805143738967269, 0.9764712522065463, 0.0, 1.0), (0.6102927279397868, 1.0, 0.0, 1.0), (1.0, 0.0, 0.39485324227971275, 1.0), (0.0, 0.8963263319880966, 1.0, 1.0), (1.0, 0.0, 0.0, 1.0), (1.0, 0.0, 0.09375, 1.0), (1.0, 0.3937503937503937, 0.0, 1.0), (1.0, 0.0, 0.6959564845594255, 1.0), (0.0, 1.0, 0.5014703241925758, 1.0)]
 cmap = matplotlib.colormaps['hsv']
 colors_nt = {NT[i]: cmap(i/4) for i in range(4)}
 
 
+###################################
+# read in statistics from log files
+###################################
+# read logs for cutadapt
 with open(f'{directory}/logs/cutadapt/{sample}_R1.log') as f:
     for line in f.readlines():
         if 'Total reads processed:' in line:
@@ -40,6 +58,8 @@ with open(f'{directory}/logs/cutadapt/{sample}_R2.log') as f:
             total_out_r2 = int(line.split()[-2].replace(',',''))
 total_in = seq_in_r1 + seq_in_r2
 
+
+# read logs for fusedReads
 with open(f'{directory}/logs/fusedReads/{sample}.log') as f:
     for line in f.readlines():
         if 'Pairs' in line:
@@ -63,6 +83,7 @@ with open(f'{directory}/logs/aligned/{sample}.log') as f:
         elif 'reads unmapped' in line:
             unmapped = int(line.split()[-1])
 
+# read logs for splitByMarker
 counts_per_marker = {}
 for i in os.listdir(directory+'/processed/splitByMarker/'):
     if '.fastq' in i:
@@ -77,7 +98,7 @@ for i in os.listdir(directory+'/processed/splitByMarker/'):
             marker = marker[pos+7:]
             counts_per_marker[marker] = length
 
-
+# read logs for extractedAmplicons
 amplicon_counts = {}
 for marker in counts_per_marker:
     count = 0
@@ -87,6 +108,7 @@ for marker in counts_per_marker:
                 count += 1
         amplicon_counts[marker] = count
 
+# read logs for Haplotypes
 haplotypes_per_amplicon = {}
 for marker in counts_per_marker:
     try:
@@ -105,8 +127,9 @@ for marker in counts_per_marker:
             haplotypes_per_amplicon[marker] = haplotypes
     except FileNotFoundError:
         pass
-
+###################################
 # pipeline overview plot
+###################################
 plt.figure(figsize=[20,4])
 
 #raw reads
@@ -219,7 +242,10 @@ plt.axis('off')
 plt.title(f'Sample: {sample}',size=20)
 plt.savefig(f'{experiment}/plots/{sample}_pipeline.png')
 
+
+###################################
 # highlighter plot
+###################################
 n_markers = len(amp_positions)
 plt.figure(figsize=[20,n_markers])
 fignumber = 1
@@ -244,7 +270,11 @@ for file in os.listdir(directory+'/processed/SNPs/'):
 plt.suptitle(f'Sample: {sample}',size=20)
 plt.savefig(f'{experiment}/plots/{sample}_highlighter.png')
 
+
+###################################
 # Overview markers
+###################################
+
 plt.figure(figsize=[10,len(counts_per_marker)/3])
 
 ypos = 0

@@ -1,3 +1,5 @@
+## template for quick soft-linking of files from the data repo into the current folder
+
 for file in /scicore/projects/openbis/userstore/uni_basel_stph_nsanzabana/20230629*/*.fastq.gz; 
 do 
     #name=$(echo $file | sed -n "s/.*L29P4_1_\(.*\)_[ATGC]\+_[ATGC]\+.*\(R[12]\).*/\1_\2.fastq.gz/p")

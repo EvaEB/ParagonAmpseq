@@ -1,4 +1,12 @@
-
+# CallHaplotypes.R
+#
+# Script to extract haplotypes from amplicons. This script has been adapted from the main HaplotypR pipeline
+#
+# Author: Eva Bons
+# 
+# Usage: 
+# Rscript --vanilla CallHaplotypes.R [marker_name] [input_sequences.fastq] [primer_file] [output_dir]
+ 
 library("HaplotypR")
 library("ShortRead")
 
@@ -17,6 +25,8 @@ if (file.info(merged_file)$size < 100) { #file is empty - gzipped files have som
     print("no seqs in file -- quitting")
     quit()
 }
+
+## below code comes directly from HaplotypR
 ################################################################################
 #Calculate mismatch rate and call SNPs
 ################################################################################

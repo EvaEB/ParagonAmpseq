@@ -1,7 +1,10 @@
 """
+extract amplicons.py
 removes primers & intronic regions from reads
 
-usage: python extract_amplicons.py reads.bam exon_positions.csv amplicon_positions.csv marker out.fastq
+author: Eva Bons
+
+usage: python extract_amplicons.py [reads.bam] [exon_positions.csv] [amplicon_positions.csv] [marker] [out.fastq]
 """
 import sys 
 import pysam
@@ -27,18 +30,18 @@ for protein, exons_this_protein in exons.groupby('proteinName'):
     if len(exons_this_protein) >= 1:
         # introns are the spaces between exons --> so positions between end of one exon and start of the next
         intron_starts = exons_this_protein.exonEnd
-        intron_starts = (exons_this_protein.exonStart.iloc[0:1]-500).append(intron_starts)
+        intron_starts = (exons_this_protein.exonStart.iloc[0:1]-500).append(intron_starts) # also add region just before the first exon of the gene
         intron_ends = exons_this_protein.exonStart
-        intron_ends = intron_ends.append(exons_this_protein.exonEnd.iloc[-1:]+500)
+        intron_ends = intron_ends.append(exons_this_protein.exonEnd.iloc[-1:]+500) # also add region right after the last exon of the gene
         introns.append(pd.DataFrame({'protein': protein,
                                      'chromosome': exons_this_protein.chromosome.iloc[0],
                                      'intronStart': list(intron_starts),
                                      'intronEnd': list(intron_ends)}))
-introns = pd.concat(introns).reset_index(drop=True)
+introns = pd.concat(introns).reset_index(drop=True) #combine the introns per gene into a single dataframe
 
-#iterate over the reads, extracting only the parts relevant for the amplicon (no primers, no introns)
-right_chromosome = introns[introns.chromosome == this_amplicon.chrom]
-introns_in_amplicon = right_chromosome[(right_chromosome.intronStart < this_amplicon.right_end) &  (right_chromosome.intronEnd > this_amplicon.left_start)]
+#iterate over the reads in reads.bam, extracting only the parts relevant for the amplicon (no primers, no introns)
+right_chromosome = introns[introns.chromosome == this_amplicon.chrom] #find introns in this chromosome
+introns_in_amplicon = right_chromosome[(right_chromosome.intronStart < this_amplicon.right_end) &  (right_chromosome.intronEnd > this_amplicon.left_start)] #find introns in this amplicon
 
 with open(outfile, 'w') as f:
     with pysam.AlignmentFile(bamfile, "rb") as bam:
@@ -48,20 +51,20 @@ with open(outfile, 'w') as f:
             quals = read.query_qualities
             dels = 0
             current_position=0
-            # deal with insertions, clipping etc.
-            for cigar in read.cigartuples:
+            # deal with insertions, clipping etc. - loop through the CIGAR tuples and update the sequence, reference positions and/or quality positions as needed
+            for cigar in read.cigartuples: 
                 if cigar[0] == 1: #insertion:
-                    insert = [ref_positions[current_position]+1]*cigar[1]
-                    ref_positions = ref_positions[:current_position] + insert + ref_positions[current_position:]
+                    insert = [ref_positions[current_position]+1]*cigar[1] #extract inserted sequence
+                    ref_positions = ref_positions[:current_position] + insert + ref_positions[current_position:] #update reference positions to include the insert
 
-                elif cigar[0] == 4: #soft clipping
-                    sequence = sequence[:current_position]+sequence[current_position+cigar[1]:]
-                    quals = quals[:current_position]+quals[current_position+cigar[1]:]
-                elif cigar[0] in [0,2,5]: #match,deletion,hard clipping
+                elif cigar[0] == 4: #soft clipping (part of read removed because it doesn't align to the reference)
+                    sequence = sequence[:current_position]+sequence[current_position+cigar[1]:] #remove the soft-clipped bases from the sequence
+                    quals = quals[:current_position]+quals[current_position+cigar[1]:] #remove the soft-clipped bases from the quals
+                elif cigar[0] in [0,2,5]: #match,deletion,hard clipping - nothing to be done
                     pass
                 else:
                     raise 
-                if cigar[0] not in  [2,4,5]:
+                if cigar[0] not in  [2,4,5]: #when entry was not a deletion, soft or hard clipping, update the current position
                     current_position += cigar[1]
                   
             
@@ -83,8 +86,8 @@ with open(outfile, 'w') as f:
                     print(read.cigartuples)
                     raise
 
-
-                new_seq = ''.join(primers_introns_removed)
+                #update the sequence & qualities
+                new_seq = ''.join(primers_introns_removed)          
                 new_qualities = (np.array(quals)[~to_remove])
                 
                 # format as fastq and print

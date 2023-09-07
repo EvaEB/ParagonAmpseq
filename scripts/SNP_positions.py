@@ -1,3 +1,12 @@
+"""
+SNP_positions.py
+
+Author: Eva Bons
+
+Usage: SNP_positions.py [haplotype_file] [haplotype_seqs] [primer_file] [amplicon_postion_file] [exon_positions] [marker] [sample]"
+"""
+
+
 import os
 import numpy as np
 import pandas as pd
@@ -29,15 +38,19 @@ rev_complement = {'A':'T',
                   'G':'C'}
 
 def determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT):
+    """finds the SNPs in a given sequence
+    """
     diffs = [(i,ref[i],seq[i]) for i in range(len(seq)) if seq[i]!=ref[i]]
     exons_in_this_chromosome = exons[(exons.chromosome == chromosome)]
     strand = exons_in_this_chromosome[exons_in_this_chromosome.exonEnd >= AmpliconStart_genome_0_NT].iloc[0].strand
     gene = exons_in_this_chromosome[exons_in_this_chromosome.exonEnd >= AmpliconStart_genome_0_NT].iloc[0].proteinName
 
-    if strand == '+':
-        if len(exons_in_this_chromosome[(exons_in_this_chromosome.exonStart < AmpliconStart_genome_0_NT) & (exons_in_this_chromosome.exonEnd > AmpliconEnd_genome_0_NT)]) == 0:
-                start_after = (exons_in_this_chromosome[exons_in_this_chromosome.exonStart > AmpliconStart_genome_0_NT])
-                AmpliconStart_genome_0_NT = start_after.iloc[start_after.exonStart.argmin()].exonStart - 1
+    # see if amplicon starts in an intron (amplicon_start is not found in any exon)
+    if len(exons_in_this_chromosome[(exons_in_this_chromosome.exonStart < AmpliconStart_genome_0_NT) & (exons_in_this_chromosome.exonEnd > AmpliconEnd_genome_0_NT)]) == 0:
+        if strand == '+':
+            start_after = (exons_in_this_chromosome[exons_in_this_chromosome.exonStart > AmpliconStart_genome_0_NT])
+            AmpliconStart_genome_0_NT = start_after.iloc[start_after.exonStart.argmin()].exonStart - 1
+            #ampliconStart needs to be updated to match the sequence (where introns have been removed)
         elif strand == '-':
             raise NotImplementedError('amplicon starting in intron on negative strand not yet implemented')
 
@@ -47,26 +60,32 @@ def determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT):
         SNPpos_amplicon_0_NT = dif[0]
         SNPpos_genome_0_NT = AmpliconStart_genome_0_NT + SNPpos_amplicon_0_NT
         if strand == '+':
-            before_and_including = exons_in_this_chromosome[exons_in_this_chromosome.exonStart<=SNPpos_genome_0_NT]
-            exonWithSNPStart_genome_0_NT = before_and_including.exonStart.max() - 1
-            if len(before_and_including) == 1:
+            #find the exon where this amplicon start
+            before_and_including = exons_in_this_chromosome[exons_in_this_chromosome.exonStart<=SNPpos_genome_0_NT] 
+            exonWithSNPStart_genome_0_NT = before_and_including.exonStart.max() - 1 #-1 because exon-file is 1-indexed
+            if len(before_and_including) == 1: #no introns before the amplicons starts
                 SNPpos_gene_0_NT = SNPpos_genome_0_NT - exonWithSNPStart_genome_0_NT
-            else:
-                before = before_and_including[before_and_including.exonStart < exonWithSNPStart_genome_0_NT]
-                before = before[before.proteinName == gene]
+            else: #there might be introns before the amplicon starts
+                before = before_and_including[before_and_including.exonStart < exonWithSNPStart_genome_0_NT] #extract exons before the exon where the amplicon starts
+                before = before[before.proteinName == gene] #only include exons of the same gene
 
+                #position in the gene is the length of all preceding exons + the position in the current exon
                 SNPpos_gene_0_NT = ((before.exonEnd - (before.exonStart - 1)).sum()+(SNPpos_genome_0_NT-exonWithSNPStart_genome_0_NT))
-        else:
+        else: #negative strand gene, same logic but now using exons after (in + sense)
             AmpliconLength = len(seq)
             after_and_including = exons_in_this_chromosome[exons_in_this_chromosome.exonEnd>=SNPpos_genome_0_NT]
             exonWithSNPEnd_genome_0_NT = after_and_including.exonEnd.min() - 1
+            after_and_including = after_and_including[after_and_including.proteinName == gene]
+
             if len(after_and_including) == 1:
                 SNPpos_gene_0_NT = exonWithSNPEnd_genome_0_NT - SNPpos_genome_0_NT + 1
             else:
+                print(after_and_including)
                 raise NotImplementedError('reverse strand genes with introns not yet implemented')
             
             SNPpos_amplicon_0_NT = AmpliconLength - SNPpos_amplicon_0_NT #convert to - strand
             
+        # find position in terms of AA
         SNPpos_gene_0_AA = SNPpos_gene_0_NT//3
         
         gene_base_position = SNPpos_gene_0_NT%3
@@ -76,6 +95,8 @@ def determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT):
         if strand == '-': #reverse complement sequence and reference
             seq = ''.join(rev_complement[i] for i in seq[::-1])
             ref = ''.join(rev_complement[i] for i in ref[::-1])
+
+        # find codons of sequence and reference & translate
         codons = [seq[i+offset:i+offset+3] for i in range(0,len(seq),3)]
         codons_ref = [ref[i+offset:i+offset+3] for i in range(0,len(seq),3)]
         while len(codons[-1]) != 3:
@@ -84,6 +105,7 @@ def determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT):
         translation = [DNA_to_protein[i] for i in codons]
         translation_ref = [DNA_to_protein[i] for i in codons_ref]
         
+        # find the actual SNPs in terms of AA
         if SNPpos_amplicon_0_AA < len(translation_ref):
             AA_old = translation_ref[SNPpos_amplicon_0_AA]
             AA_new = translation[SNPpos_amplicon_0_AA]
@@ -125,7 +147,7 @@ except pd.errors.EmptyDataError:
   sys.stderr.write("No data in file - terminating")
   exit()  
 
-total_reads = haplotypes.Reads.sum()
+total_reads = haplotypes.Reads.sum() ###THIS MIGHT NEED TO CHANGE TO EXCLUDE INDELS/CHIMERA
 
 names = []
 seqs = []
@@ -157,6 +179,7 @@ with open(amplicon_postion_file) as f:
             break
 exons = pd.read_csv(exon_positions,sep='\t')
 
+# analyze each sequence
 for seq,name in zip(seqs,names):
     try:
         n_reads = haplotypes[haplotypes.Haplotype == name].iloc[0].Reads

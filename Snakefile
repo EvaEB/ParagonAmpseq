@@ -1,3 +1,4 @@
+# read in the config
 try:
   experiment = config['experiment']
 except KeyError:
@@ -21,10 +22,6 @@ with open(experiment+'/markers') as f:
  marker = f.readlines()
  marker = [i.strip() for i in marker if i[0] != '#']
 
-
- 
- 
-localrules: all, index, splitByMarker, getExons, get_primer_file
 
 rule all:
     input:
@@ -100,7 +97,6 @@ rule fuseReads2_alignmentBased:
         "gzip {wildcards.experiment}/processed/fusedReads/{wildcards.sample}_all.fastq"
 
 
-
 rule index:
     input: 
         "{genome_full}.fasta"
@@ -129,6 +125,7 @@ rule align:
         "samtools index {output.al_sorted};"
         "samtools stats {output.al_sorted} | grep 'SN' >  {wildcards.experiment}/logs/aligned/{wildcards.sample}.log"
 
+
 rule getAmpliconPosition_list:
     input:
          "{experiment}/input/AmpliconPositions/amplicon_positions.csv"
@@ -138,6 +135,7 @@ rule getAmpliconPosition_list:
         """
         cat {input} | awk '{{print $1\"\\t\"$2\":\"$4\"-\"$5}}' > {output}
         """
+
 
 rule splitByMarker:
     input:
@@ -153,6 +151,7 @@ rule splitByMarker:
         "samtools view -b {input.al} $position > {output.bamfile};"
         "samtools fastq {output.bamfile} > {output.fastqfile}"
 
+
 rule getExons:
     input:
         gff = expand("reference/{genome}.gff",genome=genome),
@@ -163,6 +162,7 @@ rule getExons:
         "envs/AmpSeqPython.yaml"
     shell:
         "python scripts/get_exons.py {input.gff} {input.ampPos} {output}"
+
 
 rule extractAmplicons:
     input:
@@ -181,6 +181,7 @@ rule extractAmplicons:
        "python scripts/extract_amplicons.py {input.bam} {input.exonfile} {input.primerfile} {wildcards.marker} {params.fastq} > {wildcards.experiment}/logs/extractedAmplicons/{wildcards.sample}_marker_{wildcards.marker}.log;"
        "gzip {params.fastq}"
  
+
 rule get_primer_file:
     input:
         amplicon_positions = "{experiment}/input/AmpliconPositions/amplicon_positions.csv",
@@ -191,7 +192,8 @@ rule get_primer_file:
         "envs/bwa.yaml"
     shell:
         "bash scripts/amplicon_positions_to_primer.sh {input} > {output} "
-        
+
+
 rule remove_exons_from_primer:
     input:
         amplicon_file = '{experiment}/input/AmpliconPositions/amplicon_positions.csv',
@@ -220,6 +222,7 @@ rule callHaplotypes:
         "&> {wildcards.experiment}/logs/callHaplotypes/{wildcards.sample}_{wildcards.marker}.log;"
         "touch {output}"
 
+
 rule call_SNPs:
     input:
         haplotype_file = "{experiment}/processed/Haplotypes/{sample}/finalHaplotypeList_Hcov3_Scov25_occ2_sens0.0100_{marker}.txt",
@@ -239,6 +242,7 @@ rule call_SNPs:
         "processed/master_files/{wildcards.marker}_haplotypes.csv "
         "processed/master_files/{wildcards.marker}_SNPs.csv > {output} "
         "2> {wildcards.experiment}/logs/call_SNPs/{wildcards.sample}_{wildcards.marker}.log"
+
 
 rule combine_SNPs:
     input:

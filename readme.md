@@ -116,7 +116,7 @@ Once the pipeline has completed, there will be three new folders and one new fil
 │   ├── ...
 │   ├── 📁 logs
 │   ├── 📁 plots
-│   └── 📁 processed
+│   ├── 📁 processed
 │   └── 🖹 all_SNPs.csv
 ```
 `all_SNPs.csv` is the main output. This file contains the SNPs & haplotypes for all samples and markers in the experiment, and can be used for downstream appications. 
