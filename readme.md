@@ -3,11 +3,17 @@
 *This bioinformatics pipeline is still under active development and is not yet 100% functional. Documentation might be incomplete or lacking and the code is not guaranteed to be bug-free*
 
 # Paragon AmpSeq Pipeline
-This is a snakemake analysis pipeline designed to extract haplotypes and SNPs from multiplexed amplicon sequencing experiments using Paragon's amplicon sequencing kits, but can be used for any amplicon sequencing experiment
+This is a snakemake analysis pipeline designed to extract haplotypes and SNPs from multiplexed amplicon sequencing experiments using Paragon's amplicon sequencing kits, but can be used for any amplicon sequencing experiment. see [pipeline overview](#Pipeline-overview) for an overview of all the steps in the pipeline.
 
 ## Installation and setup
 This pipeline works in a linux environment only. 
 The pipeline needs a conda environemnt running snakemake and HaplotypR installed. All other dependencies will be installed automatically when needed.
+
+{% note %}
+
+**Warning:** When using this pipeline on Unibas' sciCORE computing cluster, please refer to the internal guide `ParagonAmpseq on SciCORE`
+
+{% endnote %}
 
 ### Install conda/mamba
 If you do not yet have conda or mamba installed, install mamba by following the instructions [here](https://github.com/conda-forge/miniforge)
@@ -91,7 +97,6 @@ before running the pipeline, the directory structure should now look like this
 
 ### Running the pipeline
 Once the directory structure is set up, make sure you are in the main directory (`cd ParagonAmpseq`), then enter the following (if more than one core is available, replace `--cores 1` by however many cores available.
-If the experiment is run in triplicate
 
 When running locally:
 ```bash
@@ -130,5 +135,20 @@ Once the pipeline has completed, there will be three new folders and one new fil
 - {sample}_highligher.png - an overview of the SNPs present per haplotype for every marker in the sample. 
 - {sample}_pipeline.png - an overview of how many reads get processed in each step of the pipeline.  
 
+## Troubleshooting
+When the pipeline is running, it will generate a lot of yellow, green and black text. This is normal. 
+If the pipeline ends with red text, something went wrong. Read the error (you might need to scroll up a lot). Some possible errors are listed below (this list is not complete)
+
+### `CreateCondaEnvironmentException`
+snakemake tried to create or update conda environments from a compute node, but it can't because it doesn't have an internet connection. re-do setup step 7 from a login node, and try again.
+
+### `Error: no Snakefile found, tried Snakefile, snakefile, workflow/Snakefile, workflow/snakefile.`
+Make sure you are in the `ParagonAmpseq` folder. If not, navigate to this folder and try again
+
+### `Exiting because a job execution failed. Look above for error message`
+something went wrong in one of the pipeline steps. Scroll up until you find red text saying `error in rule ...` to identify where something went wrong. Most commonly, something is wrong with one of the input files. Check these (are the filenames correct? do they contain what you expect?). If this is not the case, you might have encountered a bug. Contact a developer.
+
+## Pipeline overview
+![overview of pipeline](docs/Pipeline_overview.png)
 
 
