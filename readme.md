@@ -9,11 +9,7 @@ This is a snakemake analysis pipeline designed to extract haplotypes and SNPs fr
 This pipeline works in a linux environment only. 
 The pipeline needs a conda environemnt running snakemake and HaplotypR installed. All other dependencies will be installed automatically when needed.
 
-{% note %}
-
-**Warning:** When using this pipeline on Unibas' sciCORE computing cluster, please refer to the internal guide `ParagonAmpseq on SciCORE`
-
-{% endnote %}
+**for UniBas/SwissTPH users:** When using this pipeline on Unibas' sciCORE computing cluster, please refer to the internal guide `ParagonAmpseq on SciCORE`
 
 ### Install conda/mamba
 If you do not yet have conda or mamba installed, install mamba by following the instructions [here](https://github.com/conda-forge/miniforge)
