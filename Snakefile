@@ -2,7 +2,7 @@
 try:
   experiment = config['experiment']
 except KeyError:
-  experiment = 'DATA'
+  experiment = 'example_experiment'
 
 try:
     triplicate = config['triplicate'] #left if replicate number is first, right if replicate number is last
