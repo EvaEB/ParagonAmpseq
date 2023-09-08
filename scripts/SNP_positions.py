@@ -46,7 +46,7 @@ def determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT):
     gene = exons_in_this_chromosome[exons_in_this_chromosome.exonEnd >= AmpliconStart_genome_0_NT].iloc[0].proteinName
 
     # see if amplicon starts in an intron (amplicon_start is not found in any exon)
-    ## THE CODE HERE WAS STRANGE BEFORE. I think I fixed it (for now), but I am not sure - I did not have the time to test. If the pipeline failes, the issue might be here!
+    ## THE CODE HERE WAS STRANGE BEFORE. I think I fixed it (for now - an error will be thrown of this was the cause of the wrong values Daniela found). I did not have the time to test. If the pipeline failes, the issue might be here!
     if strand == '+':
         if len(exons_in_this_chromosome[(exons_in_this_chromosome.exonStart < AmpliconStart_genome_0_NT)]) == 0:
             start_after = (exons_in_this_chromosome[exons_in_this_chromosome.exonStart > AmpliconStart_genome_0_NT])
