@@ -46,12 +46,14 @@ def determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT):
     gene = exons_in_this_chromosome[exons_in_this_chromosome.exonEnd >= AmpliconStart_genome_0_NT].iloc[0].proteinName
 
     # see if amplicon starts in an intron (amplicon_start is not found in any exon)
-    if len(exons_in_this_chromosome[(exons_in_this_chromosome.exonStart < AmpliconStart_genome_0_NT) & (exons_in_this_chromosome.exonEnd > AmpliconEnd_genome_0_NT)]) == 0:
-        if strand == '+':
+    ## THE CODE HERE WAS STRANGE BEFORE. I think I fixed it (for now), but I am not sure - I did not have the time to test. If the pipeline failes, the issue might be here!
+    if strand == '+':
+        if len(exons_in_this_chromosome[(exons_in_this_chromosome.exonStart < AmpliconStart_genome_0_NT)]) == 0:
             start_after = (exons_in_this_chromosome[exons_in_this_chromosome.exonStart > AmpliconStart_genome_0_NT])
             AmpliconStart_genome_0_NT = start_after.iloc[start_after.exonStart.argmin()].exonStart - 1
-            #ampliconStart needs to be updated to match the sequence (where introns have been removed)
-        elif strand == '-':
+            #ampliconStart needs to be updated to match the sequence (where introns have been removed)    
+    elif strand == '-':
+        len(exons_in_this_chromosome[(exons_in_this_chromosome.exonEnd > AmpliconEnd_genome_0_NT)]) == 0:
             raise NotImplementedError('amplicon starting in intron on negative strand not yet implemented')
 
     mutIDs = []
