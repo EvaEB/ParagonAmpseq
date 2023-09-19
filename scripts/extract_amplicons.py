@@ -29,14 +29,14 @@ introns = []
 for protein, exons_this_protein in exons.groupby('proteinName'): 
     if len(exons_this_protein) >= 1:
         # introns are the spaces between exons --> so positions between end of one exon and start of the next
-        intron_starts = exons_this_protein.exonEnd
-        intron_starts = (exons_this_protein.exonStart.iloc[0:1]-500).append(intron_starts) # also add region just before the first exon of the gene
-        intron_ends = exons_this_protein.exonStart
-        intron_ends = intron_ends.append(exons_this_protein.exonEnd.iloc[-1:]+500) # also add region right after the last exon of the gene
+        intron_starts = list(exons_this_protein.exonEnd)
+        intron_starts = list(exons_this_protein.exonStart.iloc[0:1]-500) + intron_starts # also add region just before the first exon of the gene
+        intron_ends = list(exons_this_protein.exonStart)
+        intron_ends = intron_ends + list(exons_this_protein.exonEnd.iloc[-1:]+500) # also add region right after the last exon of the gene
         introns.append(pd.DataFrame({'protein': protein,
                                      'chromosome': exons_this_protein.chromosome.iloc[0],
-                                     'intronStart': list(intron_starts),
-                                     'intronEnd': list(intron_ends)}))
+                                     'intronStart': intron_starts,
+                                     'intronEnd': intron_ends}))
 introns = pd.concat(introns).reset_index(drop=True) #combine the introns per gene into a single dataframe
 
 #iterate over the reads in reads.bam, extracting only the parts relevant for the amplicon (no primers, no introns)
