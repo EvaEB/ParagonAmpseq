@@ -53,7 +53,7 @@ def determine_haplotype(seq,ref,marker,AmpliconStart_genome_0_NT):
             AmpliconStart_genome_0_NT = start_after.iloc[start_after.exonStart.argmin()].exonStart - 1
             #ampliconStart needs to be updated to match the sequence (where introns have been removed)    
     elif strand == '-':
-        len(exons_in_this_chromosome[(exons_in_this_chromosome.exonEnd > AmpliconEnd_genome_0_NT)]) == 0:
+        if len(exons_in_this_chromosome[(exons_in_this_chromosome.exonEnd > AmpliconEnd_genome_0_NT)]) == 0:
             raise NotImplementedError('amplicon starting in intron on negative strand not yet implemented')
 
     mutIDs = []
